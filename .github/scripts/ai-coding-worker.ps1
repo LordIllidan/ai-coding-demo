@@ -51,7 +51,7 @@ $budget = if ($env:AI_CLAUDE_MAX_BUDGET_USD) { $env:AI_CLAUDE_MAX_BUDGET_USD } e
 
 $issue = gh issue view $IssueNumber --repo $Repository --json number,title,body,url | ConvertFrom-Json
 $slug = ConvertTo-Slug -Value $issue.title
-$branchName = "ai-coding/issue-$IssueNumber-$slug"
+$branchName = "ai-coding/issue-$IssueNumber-$slug-$RunId"
 
 Invoke-Checked "git" "fetch" "origin" $BaseBranch | Out-Null
 git switch $BaseBranch 2>$null | Out-Null

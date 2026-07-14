@@ -1,0 +1,58 @@
+name: AI E2E Worker
+
+on:
+  pull_request:
+    types:
+      - labeled
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: ai-e2e-worker-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: Run local Claude Code e2e-test worker
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'ai-e2e-task')
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - ai-demo-worker
+
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify local tools
+        shell: pwsh
+        run: |
+          git --version
+          gh --version
+          claude --version
+
+      - name: Run local Claude Code e2e-test worker
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_CLAUDE_MODEL: ${{ vars.AI_CLAUDE_MODEL || 'sonnet' }}
+          AI_CLAUDE_E2E_BUDGET_USD: ${{ vars.AI_CLAUDE_E2E_BUDGET_USD || '1.5' }}
+        run: |
+          .\.github\scripts\ai-e2e-worker.ps1 `
+            -PullRequestNumber ${{ github.event.pull_request.number || github.event.inputs.pr_number }} `
+            -Repository "${{ github.repository }}" `
+            -RunId "${{ github.run_id }}"

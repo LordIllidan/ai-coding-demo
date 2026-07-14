@@ -14,33 +14,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
-
-function Test-RequiredCommand {
-    param([Parameter(Mandatory = $true)][string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Required command '$Name' was not found on PATH."
-    }
-}
-
-function ConvertTo-Slug {
-    param([Parameter(Mandatory = $true)][string]$Value)
-    $slug = $Value.ToLowerInvariant() -replace "[^a-z0-9]+", "-"
-    $slug = $slug.Trim("-")
-    if ($slug.Length -gt 48) { $slug = $slug.Substring(0, 48).Trim("-") }
-    if ([string]::IsNullOrWhiteSpace($slug)) { return "ai-task" }
-    return $slug
-}
-
-function Invoke-Checked {
-    param(
-        [Parameter(Mandatory = $true)][string]$Command,
-        [Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments
-    )
-    & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Command failed with exit code ${LASTEXITCODE}: ${Command} $($Arguments -join ' ')"
-    }
-}
+. (Join-Path $PSScriptRoot "ai-worker-common.ps1")
 
 Test-RequiredCommand "git"
 Test-RequiredCommand "gh"
@@ -53,13 +27,12 @@ $issue = gh issue view $IssueNumber --repo $Repository --json number,title,body,
 $slug = ConvertTo-Slug -Value $issue.title
 $branchName = "ai-coding/issue-$IssueNumber-$slug-$RunId"
 
-Invoke-Checked "git" "fetch" "origin" $BaseBranch | Out-Null
-git switch $BaseBranch 2>$null | Out-Null
-git branch -D $branchName 2>$null | Out-Null
-Invoke-Checked "git" "switch" "-c" $branchName "origin/$BaseBranch" | Out-Null
+Initialize-FreshBranch -BranchName $branchName -BaseBranch $BaseBranch
 
 $prompt = @"
-You are a coding agent running locally through a GitHub self-hosted runner (Windows).
+You are the CODING agent in a specialized worker pipeline (separate agents exist for
+unit tests, e2e tests, and review — do not do their job, stay scoped to implementation).
+Running locally through a GitHub self-hosted runner (Windows).
 
 Source GitHub issue:
 - Repository: $Repository
@@ -74,7 +47,8 @@ $($issue.body)
 
 Task:
 1. Implement the requested code change in this repository, scoped to the issue.
-2. Add or update focused tests when the change affects behavior.
+2. You MAY add minimal smoke-level tests if a function is otherwise untestable, but
+   comprehensive unit/e2e test coverage is a SEPARATE worker's job — do not over-invest there.
 3. Do not merge, do not push, and do not create a pull request — the wrapper script handles that.
 4. Do not read or print secrets. Avoid destructive git commands.
 5. Before finishing, leave the workspace ready to commit (diff applied on disk).
@@ -82,50 +56,32 @@ Task:
 Output: short summary of changed files and what each change does.
 "@
 
-$promptPath = "ai-coding-runs/issue-$IssueNumber-prompt.md"
-New-Item -ItemType Directory -Force -Path (Split-Path -Parent $promptPath) | Out-Null
-[System.IO.File]::WriteAllText((Join-Path (Get-Location).Path $promptPath), $prompt, [System.Text.UTF8Encoding]::new($false))
+$promptPath = "ai-coding-runs/issue-$IssueNumber-coding-prompt.md"
+Write-Utf8File -Path $promptPath -Content $prompt
 
 $allowedTools = "Read,Edit,Write,Glob,Grep,LS,Bash(git status:*),Bash(git diff:*),Bash(python:*),Bash(pytest:*)"
-$claudeArgs = @(
-    "--print",
-    "--model", $model,
-    "--permission-mode", "acceptEdits",
-    "--output-format", "text",
-    "--max-budget-usd", $budget,
-    "--allowedTools", $allowedTools
-)
+$result = Invoke-ClaudeCode -Prompt $prompt -Model $model -Budget $budget -AllowedTools $allowedTools
 
-$claudeOutput = $prompt | & claude @claudeArgs 2>&1
-$exitCode = $LASTEXITCODE
-$claudeOutputText = ($claudeOutput | ForEach-Object { $_.ToString() }) -join "`n"
-
-if ($exitCode -ne 0) {
-    $excerpt = if ($claudeOutputText.Length -gt 3000) { $claudeOutputText.Substring(0, 3000) + "`n... truncated ..." } else { $claudeOutputText }
-    gh issue comment $IssueNumber --repo $Repository --body "Claude Code worker failed (exit $exitCode). Run: $env:GITHUB_SERVER_URL/$Repository/actions/runs/$RunId`n`n``````text`n$excerpt`n``````"
-    throw "Claude Code exited with code $exitCode."
+if ($result.ExitCode -ne 0) {
+    $excerpt = if ($result.Text.Length -gt 3000) { $result.Text.Substring(0, 3000) + "`n... truncated ..." } else { $result.Text }
+    gh issue comment $IssueNumber --repo $Repository --body "CodingWorker failed (exit $($result.ExitCode)). Run: $env:GITHUB_SERVER_URL/$Repository/actions/runs/$RunId`n`n``````text`n$excerpt`n``````"
+    throw "Claude Code exited with code $($result.ExitCode)."
 }
 
-$changes = git status --porcelain
-if (-not $changes) {
-    gh issue comment $IssueNumber --repo $Repository --body "Claude Code worker finished but produced no file changes. Run: $env:GITHUB_SERVER_URL/$Repository/actions/runs/$RunId"
+$pushed = Push-WorkerChanges -CommitMessage "AI(coding): implement issue #$IssueNumber" -BranchName $branchName -SetUpstream
+if (-not $pushed) {
+    gh issue comment $IssueNumber --repo $Repository --body "CodingWorker finished but produced no file changes. Run: $env:GITHUB_SERVER_URL/$Repository/actions/runs/$RunId"
     throw "Claude Code produced no file changes."
 }
 
-Invoke-Checked "git" "add" "."
-Invoke-Checked "git" "commit" "-m" "AI: implement issue #$IssueNumber"
-git config --local --unset-all "http.https://github.com/.extraheader" 2>$null
-$env:GIT_TERMINAL_PROMPT = "0"
-Invoke-Checked "git" "push" "-u" "origin" $branchName
-
-$body = "Relates to #$IssueNumber`n`nAuto-generated by local Claude Code worker (model: $model).`n`n``````text`n$claudeOutputText`n``````"
+$body = "Relates to #$IssueNumber`n`nAuto-generated by CodingWorker (model: $model).`n`n``````text`n$($result.Text)`n``````"
 $bodyPath = ".ai-coding-pr-body.md"
-[System.IO.File]::WriteAllText((Join-Path (Get-Location).Path $bodyPath), $body, [System.Text.UTF8Encoding]::new($false))
+Write-Utf8File -Path $bodyPath -Content $body
 $prUrl = gh pr create --repo $Repository --title "AI: $($issue.title)" --body-file $bodyPath --head $branchName --base $BaseBranch
 if ($LASTEXITCODE -ne 0) { throw "Failed to create pull request." }
 
 gh label create "ai-coding-done" --repo $Repository --color "0e8a16" --description "AI coding worker completed" 2>$null | Out-Null
 Invoke-Checked "gh" "issue" "edit" "$IssueNumber" "--repo" $Repository "--remove-label" "ai-coding-task" "--add-label" "ai-coding-done"
-Invoke-Checked "gh" "issue" "comment" "$IssueNumber" "--repo" $Repository "--body" "Local Claude Code worker opened pull request: $prUrl"
+Invoke-Checked "gh" "issue" "comment" "$IssueNumber" "--repo" $Repository "--body" "CodingWorker opened pull request: $prUrl"
 
 Write-Output "Opened pull request: $prUrl"

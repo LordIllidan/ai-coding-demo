@@ -54,6 +54,8 @@ $slug = ConvertTo-Slug -Value $issue.title
 $branchName = "ai-coding/issue-$IssueNumber-$slug"
 
 Invoke-Checked "git" "fetch" "origin" $BaseBranch | Out-Null
+git switch $BaseBranch 2>$null | Out-Null
+git branch -D $branchName 2>$null | Out-Null
 Invoke-Checked "git" "switch" "-c" $branchName "origin/$BaseBranch" | Out-Null
 
 $prompt = @"

@@ -1,0 +1,63 @@
+name: AI Coding Worker
+
+on:
+  issues:
+    types:
+      - labeled
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Source issue number
+        required: true
+  repository_dispatch:
+    types:
+      - ai_coding_task
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ai-coding-worker-${{ github.event.issue.number || github.event.client_payload.issue_number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  coding:
+    name: Run local Claude Code worker
+    if: >-
+      github.event_name != 'issues' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'ai-coding-task')
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - ai-demo-worker
+
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Verify local tools
+        shell: pwsh
+        run: |
+          git --version
+          gh --version
+          claude --version
+
+      - name: Run local Claude Code worker
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_CLAUDE_MODEL: ${{ vars.AI_CLAUDE_MODEL || 'sonnet' }}
+          AI_CLAUDE_MAX_BUDGET_USD: ${{ vars.AI_CLAUDE_MAX_BUDGET_USD || '2' }}
+        run: |
+          .\.github\scripts\ai-coding-worker.ps1 `
+            -IssueNumber ${{ github.event.issue.number || github.event.client_payload.issue_number || github.event.inputs.issue_number }} `
+            -Repository "${{ github.repository }}" `
+            -BaseBranch "${{ github.event.repository.default_branch }}" `
+            -RunId "${{ github.run_id }}"

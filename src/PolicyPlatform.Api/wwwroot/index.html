@@ -18,6 +18,8 @@
   .status-Active { color: #2e8b57; }
   .status-Cancelled, .status-Expired { color: #a33; }
   #log { white-space: pre-wrap; font-family: monospace; font-size: 0.8rem; color: #888; }
+  .field-error { color: #a33; font-size: 0.8rem; margin-top: 0.2rem; min-height: 1em; }
+  input.invalid { border-color: #a33; outline-color: #a33; }
 </style>
 </head>
 <body>
@@ -58,8 +60,21 @@
   </table>
 </section>
 
+<section>
+  <h2>4. Zgłoszenie kradzieży</h2>
+  <label>Customer ID <input id="theftCustomerId" placeholder="wklej z kroku 1" /></label>
+  <label>Data kradzieży <input id="theftIncidentDate" type="date" /></label>
+  <div id="theftIncidentDateError" class="field-error"></div>
+  <label>Opis zdarzenia <input id="theftDescription" placeholder="okoliczności kradzieży" /></label>
+  <label>Numer zgłoszenia Policji * <input id="theftPoliceReportNumber" placeholder="np. L.dz. 123/26/RSD" required /></label>
+  <div id="theftPoliceReportNumberError" class="field-error"></div>
+  <button onclick="submitTheftClaim()">Zgłoś kradzież</button>
+  <div id="theftResult"></div>
+</section>
+
 <div id="log"></div>
 
+<script src="theft-claim-validation.js"></script>
 <script>
 const log = (msg) => { document.getElementById('log').textContent += msg + "\n"; };
 
@@ -128,6 +143,30 @@ async function loadPolicies() {
       <td>${canActivate ? `<button onclick="activatePolicy('${p.id}')">Aktywuj</button>` : ''}</td>`;
     body.appendChild(row);
   }
+}
+
+function submitTheftClaim() {
+  const policeReportNumber = document.getElementById('theftPoliceReportNumber').value;
+  const incidentDate = document.getElementById('theftIncidentDate').value;
+  const policeInput = document.getElementById('theftPoliceReportNumber');
+  const dateInput = document.getElementById('theftIncidentDate');
+  const policeErrorEl = document.getElementById('theftPoliceReportNumberError');
+  const dateErrorEl = document.getElementById('theftIncidentDateError');
+  const resultEl = document.getElementById('theftResult');
+
+  const { valid, errors } = TheftClaimValidation.validateTheftClaimForm({ policeReportNumber, incidentDate });
+
+  policeErrorEl.textContent = errors.policeReportNumber || '';
+  policeInput.classList.toggle('invalid', Boolean(errors.policeReportNumber));
+  dateErrorEl.textContent = errors.incidentDate || '';
+  dateInput.classList.toggle('invalid', Boolean(errors.incidentDate));
+
+  if (!valid) {
+    resultEl.textContent = 'Popraw błędy w formularzu, aby kontynuować.';
+    return;
+  }
+
+  resultEl.textContent = 'Formularz poprawny — zgłoszenie kradzieży gotowe do wysłania.';
 }
 
 document.getElementById('effectiveDate').valueAsDate = new Date();

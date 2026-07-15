@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PolicyPlatform.Application.Abstractions;
+using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Infrastructure.Numbering;
@@ -35,6 +36,11 @@ public static class DependencyInjection
         services.AddSingleton<IPolicyNumberGenerator, SequentialPolicyNumberGenerator>();
         services.AddScoped<PolicyService>();
         services.AddScoped<CustomerService>();
+
+        // Claims have no durable store yet (EF Core provider is a separate, unscoped
+        // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
+        services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
+        services.AddScoped<ClaimService>();
         return services;
     }
 }

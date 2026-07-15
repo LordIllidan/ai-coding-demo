@@ -64,3 +64,73 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ env.PUBLISH_DIR }}
+
+      # Deterministyczny post-deploy health check — zero LLM, zero agenta. Retry bo App
+      # Service po deployu potrzebuje chwili na cold start. Failure tutaj = czerwony krzyzyk
+      # na tym jobie, widoczny bez zadnego dodatkowego watchera.
+      - name: Health check (post-deploy)
+        run: |
+          url="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/"
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || echo "000")
+            echo "proba $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "OK — app zdrowa po deployu"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Health check nieudany po 10 probach (100s) — $url nie zwrocil 200"
+          exit 1
+
+      # Deterministyczny E2E smoke test na ŻYWEJ Azure (nie WebApplicationFactory jak
+      # PolicyPlatform.Api.E2E.Tests — tamten sprawdza kod w procesie testowym, ten
+      # sprawdza REALNIE wdrozona apke: HTTP, baza, konfiguracja, wszystko naraz). Zero
+      # LLM — sekwencja create customer -> create policy -> get policy to zwykly
+      # scenariusz uzycia, "recommend rollback" to prosta regula (test failed = tak),
+      # nie wymaga agenta zeby to "przemyslec".
+      - name: E2E smoke test (live Azure)
+        id: smoke
+        run: |
+          base="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          fail() { echo "::error::SMOKE TEST FAILED: $1"; echo "::error::REKOMENDACJA: rozwaz rollback (redeploy poprzedniego zielonego commita) — apka wdrozona, ale kluczowy sciezka uzycia nie dziala."; exit 1; }
+
+          email="smoke-$(date +%s 2>/dev/null || echo static)@example.test"
+          customer_resp=$(curl -s -w "\n%{http_code}" -X POST "$base/api/customers" \
+            -H "Content-Type: application/json" \
+            -d "{\"fullName\":\"Smoke Test\",\"email\":\"$email\"}")
+          customer_code=$(echo "$customer_resp" | tail -n1)
+          customer_body=$(echo "$customer_resp" | sed '$d')
+          [ "$customer_code" = "200" ] || fail "POST /api/customers zwrocil $customer_code (oczekiwano 200): $customer_body"
+          customer_id=$(echo "$customer_body" | grep -oE '"id"\s*:\s*"[^"]+"' | head -n1 | grep -oE '[0-9a-fA-F-]{36}')
+          [ -n "$customer_id" ] || fail "brak 'id' w odpowiedzi POST /api/customers: $customer_body"
+          echo "customer OK: $customer_id"
+
+          policy_payload="{\"customerId\":\"$customer_id\",\"effectiveDate\":\"2026-01-01\",\"expiryDate\":\"2026-12-31\",\"coverages\":[{\"type\":\"OC\",\"sumInsured\":100000,\"premium\":500,\"currency\":\"PLN\"}]}"
+          policy_resp=$(curl -s -w "\n%{http_code}" -X POST "$base/api/policies" -H "Content-Type: application/json" -d "$policy_payload")
+          policy_code=$(echo "$policy_resp" | tail -n1)
+          policy_body=$(echo "$policy_resp" | sed '$d')
+          [ "$policy_code" = "200" ] || [ "$policy_code" = "201" ] || fail "POST /api/policies zwrocil $policy_code (oczekiwano 200/201): $policy_body"
+          policy_id=$(echo "$policy_body" | grep -oE '"id"\s*:\s*"[^"]+"' | head -n1 | grep -oE '[0-9a-fA-F-]{36}')
+          [ -n "$policy_id" ] || fail "brak 'id' w odpowiedzi POST /api/policies: $policy_body"
+          echo "policy OK: $policy_id"
+
+          get_code=$(curl -s -o /tmp/get_policy.json -w "%{http_code}" "$base/api/policies/$policy_id")
+          [ "$get_code" = "200" ] || fail "GET /api/policies/$policy_id zwrocil $get_code (oczekiwano 200)"
+          grep -q "$customer_id" /tmp/get_policy.json || fail "GET /api/policies/$policy_id nie zawiera customerId — odczytana polisa niespojna z zapisana"
+          echo "OK — smoke test przeszedl (customer + policy create + read na zywej Azure)"
+
+      # Powiadomienie na Teams o nieudanym deployu/health-checku/smoke-testu — best-effort,
+      # nie maskuje oryginalnego bledu jobu (continue-on-error), dziala tylko jesli sekret
+      # ustawiony. Rekomendacja rollbacku (regula, nie LLM) doklejona zawsze przy failure.
+      - name: Notify Teams on failure
+        if: failure()
+        continue-on-error: true
+        run: |
+          if [ -z "${{ secrets.TEAMS_WEBHOOK_URL }}" ]; then
+            echo "TEAMS_WEBHOOK_URL nieustawiony, pomijam powiadomienie."
+            exit 0
+          fi
+          curl -s -X POST "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"**SDLC: deploy/health-check/smoke-test FAILED**\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nCommit: ${{ github.sha }}\n\nREKOMENDACJA: rozwaz rollback do poprzedniego zielonego commita (recznie — ten workflow nie robi tego automatycznie).\"}"

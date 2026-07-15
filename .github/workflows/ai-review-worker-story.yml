@@ -1,0 +1,67 @@
+name: AI Review Worker (story-level)
+
+# Nastepca ai-review-worker.yml (per-PR) — dispatchowany przez bridge dopiero gdy
+# WSZYSTKIE DevSubtaski jednej Jira Story maja PR z unittest+e2e+docs zrobionymi.
+# ai-review-worker.yml zostaje jako reczny fallback (workflow_dispatch) dla
+# pojedynczego PR-a poza normalnym flow, ale juz nic go automatycznie nie triggeruje
+# (label "ai-review-task" nie jest juz nigdzie automatycznie dodawany).
+
+on:
+  repository_dispatch:
+    types: [ai_story_review_task]
+  workflow_dispatch:
+    inputs:
+      story_key:
+        description: Jira story key
+        required: true
+      pr_numbers:
+        description: Comma-separated PR numbers
+        required: true
+      contract:
+        description: TechLeadAgent contract text (optional)
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-worker-story-${{ github.event.client_payload.story_key || github.event.inputs.story_key }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Run local Claude Code story-level review worker
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - ai-demo-worker
+
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify local tools
+        shell: pwsh
+        run: |
+          git --version
+          gh --version
+          claude --version
+
+      - name: Run local Claude Code story-level review worker
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_CLAUDE_MODEL: ${{ vars.AI_CLAUDE_MODEL || 'sonnet' }}
+          AI_CLAUDE_REVIEW_BUDGET_USD: ${{ vars.AI_CLAUDE_REVIEW_BUDGET_USD || '2' }}
+        run: |
+          .\.github\scripts\ai-review-worker-story.ps1 `
+            -StoryKey "${{ github.event.client_payload.story_key || github.event.inputs.story_key }}" `
+            -PrNumbers "${{ github.event.client_payload.pr_numbers || github.event.inputs.pr_numbers }}" `
+            -Contract "${{ github.event.client_payload.contract || github.event.inputs.contract }}" `
+            -Repository "${{ github.repository }}" `
+            -RunId "${{ github.run_id }}"

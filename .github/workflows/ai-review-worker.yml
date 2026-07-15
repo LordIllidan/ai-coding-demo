@@ -1,5 +1,10 @@
 name: AI Review Worker
 
+# SUPERSEDED przez ai-review-worker-story.yml (story-level, dispatchowany przez bridge) —
+# label "ai-review-task" nie jest juz nigdzie automatycznie dodawany, wiec ten workflow
+# juz sam z siebie nie odpala. Zostawiony jako reczny fallback (workflow_dispatch) do
+# recenzji pojedynczego PR-a poza normalnym flow.
+
 on:
   pull_request:
     types:

@@ -21,4 +21,5 @@ AgentConfig repo, prosto issue -> coding -> PR).
 
 ## src/
 
-Pusty punkt startowy zeby agent mial gdzie dopisac kod.
+- `health.py` — `health()` zwraca `{"status": "ok"}`. Testy: `tests/test_health.py` (unit),
+  `tests/test_health_e2e.py` (proces-boundary check, brak HTTP frameworka w repo).

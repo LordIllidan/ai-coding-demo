@@ -69,16 +69,24 @@ if ($result.ExitCode -ne 0) {
 
 # NOTE: this worker never calls `gh pr review --approve`. Approval is always a human decision —
 # an AI approving a PR authored by another AI worker defeats the point of review entirely.
+# ALSO: GitHub rejects `--request-changes` on a PR authored by the SAME identity as the
+# reviewer ("Can not request changes on your own pull request") — every PR here is authored
+# by the same GH_TOKEN identity as this worker, so `--request-changes` would ALWAYS fail
+# (confirmed real, not hypothetical). Always use --comment; the verdict is still visible in
+# the review body text and via the ai-review-flagged label below.
 $verdict = "LOOKS_GOOD"
 if ($result.Text -match "(?im)^\s*Verdict\s*:\s*REQUEST_CHANGES\s*$") { $verdict = "REQUEST_CHANGES" }
 
-$reviewFlag = if ($verdict -eq "REQUEST_CHANGES") { "--request-changes" } else { "--comment" }
-
 $bodyPath = ".ai-review-body.md"
 Write-Utf8File -Path $bodyPath -Content $result.Text
-Invoke-Checked "gh" "pr" "review" "$PullRequestNumber" "--repo" $Repository $reviewFlag "--body-file" $bodyPath
+Invoke-Checked "gh" "pr" "review" "$PullRequestNumber" "--repo" $Repository "--comment" "--body-file" $bodyPath
 
 gh label create "ai-review-done" --repo $Repository --color "0e8a16" --description "AI review worker completed" 2>$null | Out-Null
 Invoke-Checked "gh" "pr" "edit" "$PullRequestNumber" "--repo" $Repository "--remove-label" "ai-review-task" "--add-label" "ai-review-done"
+
+if ($verdict -eq "REQUEST_CHANGES") {
+    gh label create "ai-review-flagged" --repo $Repository --color "d73a4a" --description "AI review found issues requiring changes" 2>$null | Out-Null
+    Invoke-Checked "gh" "pr" "edit" "$PullRequestNumber" "--repo" $Repository "--add-label" "ai-review-flagged"
+}
 
 Write-Output "Posted review ($verdict) on PR #$PullRequestNumber — human approval still required."

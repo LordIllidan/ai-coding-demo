@@ -10,7 +10,7 @@
   h1 { font-size: 1.4rem; }
   section { border: 1px solid #8884; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
   label { display: block; margin-top: 0.5rem; font-size: 0.9rem; }
-  input, select { width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; }
+  input, select, textarea { width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; font-family: inherit; }
   button { margin-top: 0.8rem; padding: 0.5rem 1rem; cursor: pointer; }
   table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
   th, td { text-align: left; padding: 0.4rem; border-bottom: 1px solid #8884; font-size: 0.9rem; }
@@ -55,6 +55,32 @@
   <table>
     <thead><tr><th>Numer</th><th>Status</th><th>Składka</th><th>Akcje</th></tr></thead>
     <tbody id="policiesBody"></tbody>
+  </table>
+</section>
+
+<section>
+  <h2>4. Zgłoszenie szkody</h2>
+  <label>Rodzaj zgłoszenia
+    <select id="claimType" onchange="onClaimTypeChange()">
+      <option value="Communication">Szkoda komunikacyjna</option>
+      <option value="Theft">Zgłoszenie kradzieży</option>
+    </select>
+  </label>
+  <label>Numer polisy <input id="claimPolicyNumber" placeholder="np. POL/2026/000123" /></label>
+  <label>Data zdarzenia <input id="claimIncidentDate" type="date" /></label>
+  <label>Opis zdarzenia <textarea id="claimDescription" rows="3"></textarea></label>
+  <div id="theftFields">
+    <label>Numer zgłoszenia Policji <input id="policeReportNumber" placeholder="wymagane dla zgłoszenia kradzieży" /></label>
+  </div>
+  <button onclick="submitClaim()">Zarejestruj zgłoszenie</button>
+  <div id="claimResult"></div>
+</section>
+
+<section>
+  <h2>5. Zgłoszenia szkód</h2>
+  <table>
+    <thead><tr><th>Rodzaj</th><th>Polisa</th><th>Data zdarzenia</th><th>Nr zgłoszenia Policji</th></tr></thead>
+    <tbody id="claimsBody"></tbody>
   </table>
 </section>
 
@@ -130,6 +156,56 @@ async function loadPolicies() {
   }
 }
 
+const claims = [];
+
+function onClaimTypeChange() {
+  const isTheft = document.getElementById('claimType').value === 'Theft';
+  document.getElementById('theftFields').style.display = isTheft ? 'block' : 'none';
+}
+
+function submitClaim() {
+  const type = document.getElementById('claimType').value;
+  const policyNumber = document.getElementById('claimPolicyNumber').value.trim();
+  const incidentDate = document.getElementById('claimIncidentDate').value;
+  const description = document.getElementById('claimDescription').value.trim();
+  const policeReportNumber = document.getElementById('policeReportNumber').value.trim();
+  const resultEl = document.getElementById('claimResult');
+
+  if (!policyNumber || !incidentDate) {
+    resultEl.textContent = 'Błąd: numer polisy i data zdarzenia są wymagane.';
+    return;
+  }
+  if (type === 'Theft' && !policeReportNumber) {
+    resultEl.textContent = 'Błąd: numer zgłoszenia Policji jest wymagany dla zgłoszenia kradzieży.';
+    return;
+  }
+
+  claims.push({
+    type, policyNumber, incidentDate, description,
+    policeReportNumber: type === 'Theft' ? policeReportNumber : null,
+  });
+  renderClaims();
+  resultEl.textContent = 'Zarejestrowano zgłoszenie.';
+
+  document.getElementById('claimDescription').value = '';
+  document.getElementById('policeReportNumber').value = '';
+}
+
+function renderClaims() {
+  const body = document.getElementById('claimsBody');
+  body.innerHTML = '';
+  for (const c of claims) {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${c.type === 'Theft' ? 'Kradzież' : 'Komunikacyjna'}</td>
+      <td>${c.policyNumber}</td>
+      <td>${c.incidentDate}</td>
+      <td>${c.policeReportNumber ?? '—'}</td>`;
+    body.appendChild(row);
+  }
+}
+
+onClaimTypeChange();
 document.getElementById('effectiveDate').valueAsDate = new Date();
 document.getElementById('expiryDate').valueAsDate = new Date(Date.now() + 365 * 24 * 3600 * 1000);
 loadPolicies().catch(() => {});

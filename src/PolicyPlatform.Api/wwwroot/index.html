@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PolicyPlatform</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; }
+  section { border: 1px solid #8884; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
+  label { display: block; margin-top: 0.5rem; font-size: 0.9rem; }
+  input, select { width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; }
+  button { margin-top: 0.8rem; padding: 0.5rem 1rem; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 0.4rem; border-bottom: 1px solid #8884; font-size: 0.9rem; }
+  .status-Draft { color: #b8860b; }
+  .status-Active { color: #2e8b57; }
+  .status-Cancelled, .status-Expired { color: #a33; }
+  #log { white-space: pre-wrap; font-family: monospace; font-size: 0.8rem; color: #888; }
+</style>
+</head>
+<body>
+<h1>PolicyPlatform — demo</h1>
+
+<section>
+  <h2>1. Nowy klient</h2>
+  <label>Imię i nazwisko <input id="custName" value="Jan Kowalski" /></label>
+  <label>Email <input id="custEmail" value="jan.kowalski@example.com" /></label>
+  <button onclick="createCustomer()">Utwórz klienta</button>
+  <div id="custResult"></div>
+</section>
+
+<section>
+  <h2>2. Nowa polisa (draft)</h2>
+  <label>Customer ID <input id="policyCustomerId" placeholder="wklej z kroku 1" /></label>
+  <label>Data początku <input id="effectiveDate" type="date" /></label>
+  <label>Data końca <input id="expiryDate" type="date" /></label>
+  <label>Coverage
+    <select id="coverageType">
+      <option value="OC">OC (obowiązkowe)</option>
+      <option value="AC">AC</option>
+      <option value="NNW">NNW</option>
+    </select>
+  </label>
+  <label>Suma ubezpieczenia <input id="sumInsured" type="number" value="50000" /></label>
+  <label>Składka <input id="premium" type="number" value="800" /></label>
+  <button onclick="createPolicy()">Utwórz polisę</button>
+  <div id="policyResult"></div>
+</section>
+
+<section>
+  <h2>3. Polisy</h2>
+  <button onclick="loadPolicies()">Odśwież</button>
+  <table>
+    <thead><tr><th>Numer</th><th>Status</th><th>Składka</th><th>Akcje</th></tr></thead>
+    <tbody id="policiesBody"></tbody>
+  </table>
+</section>
+
+<div id="log"></div>
+
+<script>
+const log = (msg) => { document.getElementById('log').textContent += msg + "\n"; };
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    log(`ERROR ${path}: ${res.status} ${JSON.stringify(body)}`);
+    throw new Error(body?.detail || body?.title || res.statusText);
+  }
+  return body;
+}
+
+async function createCustomer() {
+  const fullName = document.getElementById('custName').value;
+  const email = document.getElementById('custEmail').value;
+  try {
+    const customer = await api('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName, email }),
+    });
+    document.getElementById('custResult').textContent = `Utworzono: ${customer.id}`;
+    document.getElementById('policyCustomerId').value = customer.id;
+  } catch (e) { document.getElementById('custResult').textContent = `Błąd: ${e.message}`; }
+}
+
+async function createPolicy() {
+  const customerId = document.getElementById('policyCustomerId').value;
+  const effectiveDate = document.getElementById('effectiveDate').value;
+  const expiryDate = document.getElementById('expiryDate').value;
+  const type = document.getElementById('coverageType').value;
+  const sumInsured = Number(document.getElementById('sumInsured').value);
+  const premium = Number(document.getElementById('premium').value);
+  try {
+    const policy = await api('/api/policies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerId, effectiveDate, expiryDate,
+        coverages: [{ type, sumInsured, premium, currency: 'PLN' }],
+      }),
+    });
+    document.getElementById('policyResult').textContent = `Utworzono: ${policy.number} (${policy.status})`;
+    loadPolicies();
+  } catch (e) { document.getElementById('policyResult').textContent = `Błąd: ${e.message}`; }
+}
+
+async function activatePolicy(id) {
+  try { await api(`/api/policies/${id}/activate`, { method: 'POST' }); loadPolicies(); }
+  catch (e) { log(`Aktywacja nieudana: ${e.message}`); }
+}
+
+async function loadPolicies() {
+  const policies = await api('/api/policies');
+  const body = document.getElementById('policiesBody');
+  body.innerHTML = '';
+  for (const p of policies) {
+    const row = document.createElement('tr');
+    const canActivate = p.status === 'Draft';
+    row.innerHTML = `
+      <td>${p.number}</td>
+      <td class="status-${p.status}">${p.status}</td>
+      <td>${p.totalPremium.toFixed(2)} ${p.currency}</td>
+      <td>${canActivate ? `<button onclick="activatePolicy('${p.id}')">Aktywuj</button>` : ''}</td>`;
+    body.appendChild(row);
+  }
+}
+
+document.getElementById('effectiveDate').valueAsDate = new Date();
+document.getElementById('expiryDate').valueAsDate = new Date(Date.now() + 365 * 24 * 3600 * 1000);
+loadPolicies().catch(() => {});
+</script>
+</body>
+</html>

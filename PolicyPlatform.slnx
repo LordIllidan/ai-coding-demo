@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PolicyPlatform.Api/PolicyPlatform.Api.csproj" />
+    <Project Path="src/PolicyPlatform.Application/PolicyPlatform.Application.csproj" />
+    <Project Path="src/PolicyPlatform.Domain/PolicyPlatform.Domain.csproj" />
+    <Project Path="src/PolicyPlatform.Infrastructure/PolicyPlatform.Infrastructure.csproj" />
+    <Project Path="src/PolicyPlatform.McpServer/PolicyPlatform.McpServer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PolicyPlatform.Application.Tests/PolicyPlatform.Application.Tests.csproj" />
+    <Project Path="tests/PolicyPlatform.Domain.Tests/PolicyPlatform.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

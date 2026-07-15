@@ -1,9 +1,9 @@
 # ai-coding-demo
 
 **PolicyPlatform** — .NET DDD Clean Architecture app (insurance policy generation domain:
-Domain/Application/Infrastructure/Api + an MCP server), plus 4 wyspecjalizowane workery
+Domain/Application/Infrastructure/Api + an MCP server), plus 5 wyspecjalizowanych workerow
 ktore odpalaja lokalne `claude` CLI (Claude Code) na self-hosted runnerze (label
-`ai-demo-worker`) i implementuja/testuja/reviewuja zmiany. Wzorowane na `AgentWorkflowPDLC2`.
+`ai-demo-worker`) i implementuja/testuja/reviewuja/persystuja zmiany. Wzorowane na `AgentWorkflowPDLC2`.
 
 **Jira jest jedynym trackerem zadan** — CodingWorker NIE tworzy GitHub issue, tylko branch+PR
 bezposrednio z `repository_dispatch` (payload: jira_key, title, body). UnitTest/E2E/Review
@@ -30,6 +30,7 @@ nigdy nie zawieraja logiki biznesowej — tylko translacje request/response <-> 
 | **CodingWorker** | `repository_dispatch` (`ai_coding_task`) z Jiry | implementuje task, otwiera branch+PR | `ai-coding-worker.ps1` |
 | **UnitTestWorker** | label `ai-unittest-task` na PR | dopisuje testy jednostkowe (xUnit) na TYM SAMYM branchu, nie rusza kodu produkcyjnego | `ai-unittest-worker.ps1` |
 | **E2ETestWorker** | label `ai-e2e-task` na PR | integracyjne testy HTTP przez `WebApplicationFactory<Program>` | `ai-e2e-worker.ps1` |
+| **DatabaseWorker** | label `ai-database-task` na PR | EF Core: DbContext/entity configs/migracje w `PolicyPlatform.Infrastructure`, NIE rusza Domain/Application | `ai-database-worker.ps1` |
 | **ReviewWorker** | label `ai-review-task` na PR | tylko czyta diff, **nie edytuje plikow**, `gh pr review --comment`/`--request-changes` — NIGDY `--approve` (AI nie zatwierdza wlasnego kodu) | `ai-review-worker.ps1` |
 
 Wspolne helpery (branch/push/claude invoke) w `ai-worker-common.ps1`, dot-source w kazdym workerze.

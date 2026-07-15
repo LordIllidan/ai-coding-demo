@@ -4,7 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddPolicyPlatformInfrastructure();
+builder.Services.AddPolicyPlatformInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -16,6 +16,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.Run();
 

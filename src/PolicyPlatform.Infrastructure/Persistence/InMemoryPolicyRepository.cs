@@ -24,4 +24,12 @@ public sealed class InMemoryPolicyRepository : IPolicyRepository
         _policies[policy.Id] = policy;
         return Task.CompletedTask;
     }
+
+    public Task UpdateAsync(Policy policy, CancellationToken ct = default)
+    {
+        // No-op: GetByIdAsync returns the same object reference stored in _policies, so
+        // mutations (Activate()/Cancel()) are already reflected. Present only to satisfy
+        // IPolicyRepository symmetrically with EfPolicyRepository, which needs a real flush.
+        return Task.CompletedTask;
+    }
 }

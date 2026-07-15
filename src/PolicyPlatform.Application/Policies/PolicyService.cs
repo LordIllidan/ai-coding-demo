@@ -44,6 +44,7 @@ public sealed class PolicyService
     {
         var policy = await GetPolicyOrThrowAsync(policyId, ct);
         policy.Activate();
+        await _policies.UpdateAsync(policy, ct);
         return PolicyDto.FromDomain(policy);
     }
 
@@ -51,6 +52,7 @@ public sealed class PolicyService
     {
         var policy = await GetPolicyOrThrowAsync(policyId, ct);
         policy.Cancel();
+        await _policies.UpdateAsync(policy, ct);
         return PolicyDto.FromDomain(policy);
     }
 

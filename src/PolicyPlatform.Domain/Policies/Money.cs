@@ -2,7 +2,11 @@ using PolicyPlatform.Domain.Common;
 
 namespace PolicyPlatform.Domain.Policies;
 
-public readonly record struct Money
+/// <summary>Reference-type record (not a record struct): EF Core's OwnedNavigationBuilder.OwnsOne
+/// requires a reference type for nested owned value objects (record structs are rejected
+/// with CS0452). Value equality and immutability are unaffected — records give both
+/// regardless of struct/class.</summary>
+public sealed record Money
 {
     public decimal Amount { get; }
     public string Currency { get; }

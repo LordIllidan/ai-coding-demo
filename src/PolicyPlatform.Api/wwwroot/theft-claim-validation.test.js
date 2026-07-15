@@ -31,6 +31,12 @@ test('validatePoliceReportNumber: rejects values over 40 characters', () => {
   assert.equal(validatePoliceReportNumber(tooLong), ERRORS.POLICE_REPORT_NUMBER_INVALID_FORMAT);
 });
 
+test('validatePoliceReportNumber: accepts values at the 40-character boundary', () => {
+  const exactly40 = 'A1'.repeat(20); // 40 chars, contains digits
+  assert.equal(exactly40.length, 40);
+  assert.equal(validatePoliceReportNumber(exactly40), null);
+});
+
 test('validatePoliceReportNumber: accepts typical formats', () => {
   assert.equal(validatePoliceReportNumber('L.dz. 123/26/RSD'), null);
   assert.equal(validatePoliceReportNumber('RSD-1234/26'), null);
@@ -90,4 +96,14 @@ test('validateTheftClaimForm: reports only the invalid field', () => {
   assert.equal(result.valid, false);
   assert.equal('policeReportNumber' in result.errors, false);
   assert.equal(result.errors.incidentDate, ERRORS.INCIDENT_DATE_REQUIRED);
+});
+
+test('validateTheftClaimForm: reports only the invalid police report number', () => {
+  const result = validateTheftClaimForm({
+    policeReportNumber: 'AB#123',
+    incidentDate: '2020-01-15',
+  });
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.policeReportNumber, ERRORS.POLICE_REPORT_NUMBER_INVALID_FORMAT);
+  assert.equal('incidentDate' in result.errors, false);
 });

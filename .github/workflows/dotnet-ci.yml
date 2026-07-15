@@ -1,0 +1,65 @@
+name: .NET CI
+
+on:
+  push:
+    branches:
+      - main
+      - "ai-coding/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test PolicyPlatform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore PolicyPlatform.slnx
+
+      - name: Build (Release)
+        run: dotnet build PolicyPlatform.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test PolicyPlatform.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: PolicyPlatform tests
+          path: "**/test-results.trx"
+          reporter: dotnet-trx
+          fail-on-error: false
+
+  guard-agent-scope:
+    name: Guard - AI branches must not touch CI/CD or agent config
+    if: startsWith(github.ref, 'refs/heads/ai-coding/') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'ai-coding/'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail if an AI branch modifies its own guardrails
+        run: |
+          git fetch origin main --depth=1
+          CHANGED=$(git diff --name-only origin/main...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^\.github/(workflows|scripts)/'; then
+            echo "::error::AI coding branches must not modify .github/workflows or .github/scripts (agent guardrails). A human must make that change."
+            exit 1
+          fi

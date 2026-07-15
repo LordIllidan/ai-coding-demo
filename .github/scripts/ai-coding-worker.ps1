@@ -63,7 +63,7 @@ Output: short summary of changed files and what each change does.
 $promptPath = "ai-coding-runs/$($JiraKey.ToLowerInvariant())-coding-prompt.md"
 Write-Utf8File -Path $promptPath -Content $prompt
 
-$allowedTools = "Read,Edit,Write,Glob,Grep,LS,Bash(git status:*),Bash(git diff:*),Bash(python:*),Bash(pytest:*)"
+$allowedTools = "Read,Edit,Write,Glob,Grep,LS,Bash(git status:*),Bash(git diff:*),Bash(dotnet build:*),Bash(dotnet test:*),Bash(dotnet restore:*)"
 $result = Invoke-ClaudeCode -Prompt $prompt -Model $model -Budget $budget -AllowedTools $allowedTools
 
 if ($result.ExitCode -ne 0) {

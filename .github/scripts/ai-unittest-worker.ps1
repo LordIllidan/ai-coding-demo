@@ -54,7 +54,7 @@ Output: short summary of which functions got new test coverage and any gaps you 
 $promptPath = "ai-coding-runs/pr-$PullRequestNumber-unittest-prompt.md"
 Write-Utf8File -Path $promptPath -Content $prompt
 
-$allowedTools = "Read,Write,Glob,Grep,LS,Bash(git status:*),Bash(git diff:*),Bash(python:*),Bash(pytest:*)"
+$allowedTools = "Read,Write,Glob,Grep,LS,Bash(git status:*),Bash(git diff:*),Bash(dotnet build:*),Bash(dotnet test:*)"
 $result = Invoke-ClaudeCode -Prompt $prompt -Model $model -Budget $budget -AllowedTools $allowedTools
 
 if ($result.ExitCode -ne 0) {

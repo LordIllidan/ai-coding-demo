@@ -37,6 +37,18 @@ Result: POST without (or blank) police report number → `400` with clear messag
 
 Diff introduced by this PR:
 ~~~diff
+diff --git a/PolicyPlatform.slnx b/PolicyPlatform.slnx
+index 5ca9812..38315d2 100644
+--- a/PolicyPlatform.slnx
++++ b/PolicyPlatform.slnx
+@@ -7,6 +7,7 @@
+     <Project Path="src/PolicyPlatform.McpServer/PolicyPlatform.McpServer.csproj" />
+   </Folder>
+   <Folder Name="/tests/">
++    <Project Path="tests/PolicyPlatform.Api.E2E.Tests/PolicyPlatform.Api.E2E.Tests.csproj" />
+     <Project Path="tests/PolicyPlatform.Application.Tests/PolicyPlatform.Application.Tests.csproj" />
+     <Project Path="tests/PolicyPlatform.Domain.Tests/PolicyPlatform.Domain.Tests.csproj" />
+   </Folder>
 diff --git a/ai-coding-runs/aisdlc-41-coding-prompt.md b/ai-coding-runs/aisdlc-41-coding-prompt.md
 new file mode 100644
 index 0000000..84269e3
@@ -477,22 +489,7 @@ index 0000000..c7a0687
 ++        }
 ++        catch (DomainException ex)
 ++        {
-++            return Problem(ex.Message, statusCode: StatusCodes.Status400BadRequest);
-++        }
-++    }
-++
-++    [HttpGet("{id:guid}")]
-++    public async Task<ActionResult<TheftClaimDto>> GetById(Guid id, CancellationToken ct)
-++    {
-++        var claim = await _claimService.GetTheftClaimAsync(id, ct);
-++        return claim is null ? NotFound() : Ok(claim);
-++    }
-++}
-+diff --git a/src/PolicyPlatform.Application/Abstractions/IClaimRepository.cs b/src/PolicyPlatform.Application/Abstractions/IClaimRepository.cs
-+new file mode 100644
-+index 0000000..033328a
-+--- /dev/null
-++++ b/src/PolicyPlatform.Application/Abstractions/IClaim
+++            return Problem(ex.Message, statusCode: StatusCo
 ... diff truncated ...
 ~~~
 

@@ -1,4 +1,5 @@
 using PolicyPlatform.Application.Abstractions;
+using PolicyPlatform.Application.Notifications;
 using PolicyPlatform.Domain.Common;
 using PolicyPlatform.Domain.Policies;
 
@@ -11,13 +12,18 @@ public sealed class PolicyService
     private readonly IPolicyRepository _policies;
     private readonly ICustomerRepository _customers;
     private readonly IPolicyNumberGenerator _numberGenerator;
+    private readonly PolicyStatusPushDispatcher _statusPushDispatcher;
 
     public PolicyService(
-        IPolicyRepository policies, ICustomerRepository customers, IPolicyNumberGenerator numberGenerator)
+        IPolicyRepository policies,
+        ICustomerRepository customers,
+        IPolicyNumberGenerator numberGenerator,
+        PolicyStatusPushDispatcher statusPushDispatcher)
     {
         _policies = policies;
         _customers = customers;
         _numberGenerator = numberGenerator;
+        _statusPushDispatcher = statusPushDispatcher;
     }
 
     public async Task<PolicyDto> CreatePolicyAsync(CreatePolicyRequest request, CancellationToken ct = default)
@@ -44,6 +50,7 @@ public sealed class PolicyService
     {
         var policy = await GetPolicyOrThrowAsync(policyId, ct);
         policy.Activate();
+        await _statusPushDispatcher.DispatchAsync(policy, ct);
         return PolicyDto.FromDomain(policy);
     }
 
@@ -51,6 +58,7 @@ public sealed class PolicyService
     {
         var policy = await GetPolicyOrThrowAsync(policyId, ct);
         policy.Cancel();
+        await _statusPushDispatcher.DispatchAsync(policy, ct);
         return PolicyDto.FromDomain(policy);
     }
 

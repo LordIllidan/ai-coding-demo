@@ -8,7 +8,7 @@ var builder = Host.CreateApplicationBuilder(args);
 // MCP servers speak JSON-RPC over stdio; nothing else may write to stdout.
 builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
 
-builder.Services.AddPolicyPlatformInfrastructure();
+builder.Services.AddPolicyPlatformInfrastructure(builder.Configuration);
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()

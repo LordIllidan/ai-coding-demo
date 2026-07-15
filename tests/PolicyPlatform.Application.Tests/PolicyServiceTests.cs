@@ -1,7 +1,11 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using PolicyPlatform.Application.Customers;
+using PolicyPlatform.Application.Notifications;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Domain.Common;
 using PolicyPlatform.Domain.Policies;
+using PolicyPlatform.Infrastructure.Notifications;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
 using Xunit;
@@ -15,8 +19,13 @@ public class PolicyServiceTests
         var customerRepo = new InMemoryCustomerRepository();
         var policyRepo = new InMemoryPolicyRepository();
         var numberGenerator = new SequentialPolicyNumberGenerator();
+        var pushDispatcher = new PolicyStatusPushDispatcher(
+            new InMemoryDeviceTokenRepository(),
+            new LoggingPushNotificationSender(
+                NullLogger<LoggingPushNotificationSender>.Instance,
+                Options.Create(new PushNotificationOptions())));
         return (
-            new PolicyService(policyRepo, customerRepo, numberGenerator),
+            new PolicyService(policyRepo, customerRepo, numberGenerator, pushDispatcher),
             new CustomerService(customerRepo));
     }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PolicyPlatform.Application.Notifications;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Domain.Common;
 
@@ -9,8 +10,13 @@ namespace PolicyPlatform.Api.Controllers;
 public sealed class PoliciesController : ControllerBase
 {
     private readonly PolicyService _policyService;
+    private readonly PolicyStatusNotificationService _statusNotifications;
 
-    public PoliciesController(PolicyService policyService) => _policyService = policyService;
+    public PoliciesController(PolicyService policyService, PolicyStatusNotificationService statusNotifications)
+    {
+        _policyService = policyService;
+        _statusNotifications = statusNotifications;
+    }
 
     [HttpPost]
     public async Task<ActionResult<PolicyDto>> Create(CreatePolicyRequest request, CancellationToken ct)
@@ -42,7 +48,7 @@ public sealed class PoliciesController : ControllerBase
     {
         try
         {
-            return Ok(await _policyService.ActivatePolicyAsync(id, ct));
+            return Ok(await _statusNotifications.ActivatePolicyAsync(id, ct));
         }
         catch (DomainException ex)
         {
@@ -55,7 +61,7 @@ public sealed class PoliciesController : ControllerBase
     {
         try
         {
-            return Ok(await _policyService.CancelPolicyAsync(id, ct));
+            return Ok(await _statusNotifications.CancelPolicyAsync(id, ct));
         }
         catch (DomainException ex)
         {

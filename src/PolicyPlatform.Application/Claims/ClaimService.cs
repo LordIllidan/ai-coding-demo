@@ -17,22 +17,20 @@ public sealed class ClaimService
         _policies = policies;
     }
 
-    public async Task<TheftClaimDto> RegisterTheftClaimAsync(
+    public async Task<TheftClaimCreatedResponse> RegisterTheftClaimAsync(
         CreateTheftClaimRequest request, CancellationToken ct = default)
     {
+        // Validate the police report number before touching the DB — an invalid
+        // format is a client error (422) regardless of whether the policy exists.
+        var policeReportNumber = new PoliceReportNumber(request.PoliceReportNumber);
+
         _ = await _policies.GetByIdAsync(request.PolicyId, ct)
             ?? throw new DomainException($"Policy {request.PolicyId} was not found.");
 
-        var claim = TheftClaim.Register(
-            Guid.NewGuid(),
-            request.PolicyId,
-            request.IncidentDate,
-            request.Description,
-            new PoliceReportNumber(request.PoliceReportNumber),
-            DateTime.UtcNow);
+        var claim = TheftClaim.Register(Guid.NewGuid(), request.PolicyId, policeReportNumber, DateTime.UtcNow);
 
         await _claims.AddAsync(claim, ct);
-        return TheftClaimDto.FromDomain(claim);
+        return TheftClaimCreatedResponse.FromDomain(claim);
     }
 
     public async Task<TheftClaimDto?> GetTheftClaimAsync(Guid claimId, CancellationToken ct = default)

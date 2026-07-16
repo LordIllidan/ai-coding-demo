@@ -23,11 +23,17 @@ public sealed class TheftClaimsEndpointTests : IClassFixture<WebApplicationFacto
 
     private sealed record PolicyDto(Guid Id, string Number, Guid CustomerId);
 
-    private sealed record CreateTheftClaimRequest(
-        Guid PolicyId, DateOnly IncidentDate, string Description, string? PoliceReportNumber);
+    private sealed record CreateTheftClaimRequest(Guid PolicyId, string? PoliceReportNumber);
+
+    private sealed record TheftClaimCreatedResponse(
+        Guid ClaimId, Guid PolicyId, string PoliceReportNumber, string Status, bool NextStepAllowed);
 
     private sealed record TheftClaimDto(
-        Guid Id, Guid PolicyId, DateOnly IncidentDate, string Description, string PoliceReportNumber, DateTime ReportedAt);
+        Guid Id, Guid PolicyId, string PoliceReportNumber, string Status, DateTime CreatedAt, DateTime UpdatedAt);
+
+    private sealed record FieldError(string Field, string Code, string Message);
+
+    private sealed record ValidationErrorResponse(string Code, IReadOnlyList<FieldError> FieldErrors);
 
     private async Task<Guid> CreateActivePolicyAsync()
     {
@@ -48,34 +54,48 @@ public sealed class TheftClaimsEndpointTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task Post_MissingPoliceReportNumber_ReturnsBadRequest()
+    public async Task Post_MissingPoliceReportNumber_ReturnsUnprocessableEntityWithRequiredCode()
     {
         var policyId = await CreateActivePolicyAsync();
-        var request = new CreateTheftClaimRequest(policyId, new DateOnly(2026, 2, 1), "Kradziez pojazdu.", null);
+        var request = new CreateTheftClaimRequest(policyId, null);
 
         var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("police report number", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>();
+        Assert.Equal("VALIDATION_ERROR", body!.Code);
+        Assert.Equal("policeReportNumber", body.FieldErrors[0].Field);
+        Assert.Equal("POLICE_REPORT_NUMBER_REQUIRED", body.FieldErrors[0].Code);
     }
 
     [Fact]
-    public async Task Post_BlankPoliceReportNumber_ReturnsBadRequest()
+    public async Task Post_BlankPoliceReportNumber_ReturnsUnprocessableEntity()
     {
         var policyId = await CreateActivePolicyAsync();
-        var request = new CreateTheftClaimRequest(policyId, new DateOnly(2026, 2, 1), "Kradziez pojazdu.", "   ");
+        var request = new CreateTheftClaimRequest(policyId, "   ");
 
         var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_InvalidFormatPoliceReportNumber_ReturnsUnprocessableEntityWithFormatCode()
+    {
+        var policyId = await CreateActivePolicyAsync();
+        var request = new CreateTheftClaimRequest(policyId, "AB");
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponse>();
+        Assert.Equal("POLICE_REPORT_NUMBER_INVALID_FORMAT", body!.FieldErrors[0].Code);
     }
 
     [Fact]
     public async Task Post_UnknownPolicy_ReturnsBadRequest()
     {
-        var request = new CreateTheftClaimRequest(
-            Guid.NewGuid(), new DateOnly(2026, 2, 1), "Kradziez pojazdu.", "KMP/123/2026");
+        var request = new CreateTheftClaimRequest(Guid.NewGuid(), "KMP/123/2026");
 
         var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
 
@@ -83,25 +103,27 @@ public sealed class TheftClaimsEndpointTests : IClassFixture<WebApplicationFacto
     }
 
     [Fact]
-    public async Task Post_ValidRequest_ReturnsCreatedAndRetrievableClaim()
+    public async Task Post_ValidRequest_ReturnsCreatedWithNormalizedNumberAndRetrievableClaim()
     {
         var policyId = await CreateActivePolicyAsync();
-        var request = new CreateTheftClaimRequest(policyId, new DateOnly(2026, 2, 1), "Kradziez pojazdu.", "KMP/123/2026");
+        var request = new CreateTheftClaimRequest(policyId, "kmp/123/2026");
 
         var createResponse = await _client.PostAsJsonAsync("/api/theft-claims", request);
 
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<TheftClaimDto>();
+        var created = await createResponse.Content.ReadFromJsonAsync<TheftClaimCreatedResponse>();
         Assert.NotNull(created);
         Assert.Equal(policyId, created!.PolicyId);
         Assert.Equal("KMP/123/2026", created.PoliceReportNumber);
+        Assert.Equal("ACCEPTED", created.Status);
+        Assert.True(created.NextStepAllowed);
         Assert.NotNull(createResponse.Headers.Location);
 
         var getResponse = await _client.GetAsync(createResponse.Headers.Location);
 
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
         var fetched = await getResponse.Content.ReadFromJsonAsync<TheftClaimDto>();
-        Assert.Equal(created.Id, fetched!.Id);
+        Assert.Equal(created.ClaimId, fetched!.Id);
         Assert.Equal("KMP/123/2026", fetched.PoliceReportNumber);
     }
 

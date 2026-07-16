@@ -1,5 +1,4 @@
 using PolicyPlatform.Domain.Claims;
-using PolicyPlatform.Domain.Common;
 using Xunit;
 
 namespace PolicyPlatform.Domain.Tests;
@@ -10,15 +9,26 @@ public class PoliceReportNumberTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_MissingValue_Throws(string? value)
+    public void Constructor_MissingValue_ThrowsRequired(string? value)
     {
-        Assert.Throws<DomainException>(() => new PoliceReportNumber(value));
+        var ex = Assert.Throws<PoliceReportNumberValidationException>(() => new PoliceReportNumber(value));
+        Assert.Equal(PoliceReportNumber.RequiredCode, ex.Code);
+    }
+
+    [Theory]
+    [InlineData("AB")]
+    [InlineData("KMP@123")]
+    [InlineData("KMP_123/2026")]
+    public void Constructor_InvalidFormat_ThrowsInvalidFormat(string value)
+    {
+        var ex = Assert.Throws<PoliceReportNumberValidationException>(() => new PoliceReportNumber(value));
+        Assert.Equal(PoliceReportNumber.InvalidFormatCode, ex.Code);
     }
 
     [Fact]
-    public void Constructor_ValidValue_TrimsWhitespace()
+    public void Constructor_ValidValue_TrimsAndNormalizesToUpperCase()
     {
-        var number = new PoliceReportNumber("  KMP/123/2026  ");
+        var number = new PoliceReportNumber("  kmp/123/2026  ");
 
         Assert.Equal("KMP/123/2026", number.Value);
     }

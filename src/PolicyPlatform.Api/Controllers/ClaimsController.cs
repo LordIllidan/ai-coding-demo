@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PolicyPlatform.Application.Claims;
+using PolicyPlatform.Domain.Claims;
 using PolicyPlatform.Domain.Common;
 
 namespace PolicyPlatform.Api.Controllers;
@@ -13,12 +14,19 @@ public sealed class ClaimsController : ControllerBase
     public ClaimsController(ClaimService claimService) => _claimService = claimService;
 
     [HttpPost]
-    public async Task<ActionResult<TheftClaimDto>> Create(CreateTheftClaimRequest request, CancellationToken ct)
+    public async Task<ActionResult<TheftClaimCreatedResponse>> Create(CreateTheftClaimRequest request, CancellationToken ct)
     {
         try
         {
             var claim = await _claimService.RegisterTheftClaimAsync(request, ct);
-            return CreatedAtAction(nameof(GetById), new { id = claim.Id }, claim);
+            return CreatedAtAction(nameof(GetById), new { id = claim.ClaimId }, claim);
+        }
+        catch (PoliceReportNumberValidationException ex)
+        {
+            var error = new ValidationErrorResponse(
+                "VALIDATION_ERROR",
+                [new FieldError("policeReportNumber", ex.Code, PoliceReportNumberValidationException.ValidationMessage)]);
+            return UnprocessableEntity(error);
         }
         catch (DomainException ex)
         {

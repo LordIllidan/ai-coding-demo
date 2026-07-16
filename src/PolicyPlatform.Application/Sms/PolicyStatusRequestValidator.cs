@@ -4,11 +4,19 @@ using PolicyPlatform.Domain.Customers;
 
 namespace PolicyPlatform.Application.Sms;
 
+/// <summary>Outcome of <see cref="PolicyStatusRequestValidator.Validate"/>.</summary>
 public enum PolicyStatusRequestValidationResult
 {
+    /// <summary>Request is well-formed; safe to pass to <see cref="IPolicyStatusRequestHandler"/>.</summary>
     Valid,
+
+    /// <summary>messageId, senderMsisdn, policyNumber, or pesel is missing/blank/malformed as a UUID/MSISDN.</summary>
     MissingFields,
+
+    /// <summary>policyNumber does not match <c>^[A-Z0-9-]{6,30}$</c> after trim + uppercase.</summary>
     InvalidPolicyNumberFormat,
+
+    /// <summary>pesel is not 11 digits or fails the checksum.</summary>
     InvalidPeselFormat,
 }
 
@@ -17,6 +25,10 @@ public enum PolicyStatusRequestValidationResult
 /// or rate limiting, and never has to consider whether the policy/customer actually exist.</summary>
 public static partial class PolicyStatusRequestValidator
 {
+    /// <summary>Validates a wire-level request's shape and normalizes its policy number.</summary>
+    /// <param name="request">Raw wire-level request body.</param>
+    /// <param name="normalizedPolicyNumber">Trimmed/uppercased policy number on success; empty string otherwise.</param>
+    /// <returns>The validation outcome.</returns>
     public static PolicyStatusRequestValidationResult Validate(
         SmsPolicyStatusRequestDto request, out string normalizedPolicyNumber)
     {

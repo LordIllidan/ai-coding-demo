@@ -7,5 +7,9 @@ namespace PolicyPlatform.Application.Sms;
 /// does not know about HTTP status codes.</summary>
 public interface IPolicyStatusRequestHandler
 {
+    /// <summary>Resolves the business outcome for an already input-validated request.</summary>
+    /// <param name="request">Normalized policy number and checksum-verified PESEL.</param>
+    /// <param name="ct">Cancellation token for the downstream lookup.</param>
+    /// <returns>The business-level reply (found, not-verified, rate-limited, or service-unavailable).</returns>
     Task<PolicyStatusReply> HandleAsync(PolicyStatusRequest request, CancellationToken ct = default);
 }

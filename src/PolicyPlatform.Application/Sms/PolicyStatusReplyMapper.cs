@@ -7,6 +7,9 @@ namespace PolicyPlatform.Application.Sms;
 /// wording/labels can change without touching business rules.</summary>
 public static class PolicyStatusReplyMapper
 {
+    /// <summary>Policy was found and its status is disclosable to the caller.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
+    /// <param name="status">The policy's current status.</param>
     public static PolicyStatusReply Found(Guid requestId, PolicyStatus status) => new(
         requestId,
         SmsDecisionCode.Replied,
@@ -17,6 +20,7 @@ public static class PolicyStatusReplyMapper
 
     /// <summary>Covers both "no such policy" and "policy exists but PESEL does not match" —
     /// the two must be indistinguishable to the caller, so this is the only non-found outcome.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
     public static PolicyStatusReply NotVerified(Guid requestId) => new(
         requestId,
         SmsDecisionCode.Replied,
@@ -25,6 +29,8 @@ public static class PolicyStatusReplyMapper
         null,
         null);
 
+    /// <summary>A downstream dependency was unavailable; no decision could be made.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
     public static PolicyStatusReply ServiceUnavailable(Guid requestId) => new(
         requestId,
         SmsDecisionCode.Error,
@@ -34,6 +40,7 @@ public static class PolicyStatusReplyMapper
         null);
 
     /// <summary>Required policyNumber/pesel field(s) were absent from the request body.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
     public static PolicyStatusReply MissingFields(Guid requestId) => new(
         requestId,
         SmsDecisionCode.Rejected,
@@ -42,6 +49,8 @@ public static class PolicyStatusReplyMapper
         null,
         null);
 
+    /// <summary>policyNumber failed format validation.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
     public static PolicyStatusReply InvalidPolicyNumberFormat(Guid requestId) => new(
         requestId,
         SmsDecisionCode.Rejected,
@@ -50,6 +59,8 @@ public static class PolicyStatusReplyMapper
         null,
         null);
 
+    /// <summary>pesel failed format/checksum validation.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
     public static PolicyStatusReply InvalidPeselFormat(Guid requestId) => new(
         requestId,
         SmsDecisionCode.Rejected,
@@ -58,6 +69,8 @@ public static class PolicyStatusReplyMapper
         null,
         null);
 
+    /// <summary>Sender exceeded the SMS rate limit; no lookup was performed.</summary>
+    /// <param name="requestId">Identifier assigned to this request/reply pair.</param>
     public static PolicyStatusReply RateLimited(Guid requestId) => new(
         requestId,
         SmsDecisionCode.RateLimited,
@@ -66,6 +79,9 @@ public static class PolicyStatusReplyMapper
         null,
         null);
 
+    /// <summary>Polish-language SMS reply text for a given reply code.</summary>
+    /// <param name="replyCode">The reply reason to render as text.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown for an unrecognized <paramref name="replyCode"/>.</exception>
     public static string ReplyText(SmsReplyCode replyCode) => replyCode switch
     {
         SmsReplyCode.PolicyStatusFound => "Status Twojej polisy zostal znaleziony.",
@@ -78,6 +94,9 @@ public static class PolicyStatusReplyMapper
         _ => throw new ArgumentOutOfRangeException(nameof(replyCode), replyCode, null),
     };
 
+    /// <summary>Human-readable Polish label for a disclosable policy status.</summary>
+    /// <param name="status">Policy status to label.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown for a non-disclosable status (e.g. Draft).</exception>
     public static string StatusLabel(PolicyStatus status) => status switch
     {
         PolicyStatus.Active => "Aktywna",

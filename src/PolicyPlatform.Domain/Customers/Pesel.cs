@@ -10,8 +10,13 @@ public readonly partial record struct Pesel
 {
     private static readonly int[] Weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3];
 
+    /// <summary>Raw 11-digit PESEL value.</summary>
     public string Value { get; }
 
+    /// <summary>Validates and wraps a raw PESEL string.</summary>
+    /// <param name="value">Candidate PESEL, expected to be exactly 11 digits.</param>
+    /// <exception cref="DomainException">Thrown when <paramref name="value"/> is not 11 digits
+    /// or fails the official checksum.</exception>
     public Pesel(string value)
     {
         if (!PeselPattern().IsMatch(value))
@@ -27,6 +32,7 @@ public readonly partial record struct Pesel
         Value = value;
     }
 
+    /// <summary>Returns the raw PESEL value.</summary>
     public override string ToString() => Value;
 
     private static bool HasValidChecksum(string pesel)

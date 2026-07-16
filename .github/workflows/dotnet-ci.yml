@@ -35,6 +35,16 @@ jobs:
       - name: Test
         run: dotnet test PolicyPlatform.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
 
+      # Deterministyczny skan podatnosci (dotnet CLI wbudowany, zero dodatkowych narzedzi).
+      # Celowo NIE blokuje builda (zawsze exit 0) — to zrodlo danych dla SecurityAgent ETAP
+      # "kod" (Jira), nie gate CI. Bridge czyta ten output z logu runu i wkleja do Jiry jako
+      # komentarz "SKAN BEZPIECZENSTWA:" na historyjce.
+      - name: Security scan (vulnerable packages)
+        run: |
+          echo "=== SKAN BEZPIECZENSTWA: dotnet list package --vulnerable ==="
+          dotnet list PolicyPlatform.slnx package --vulnerable --include-transitive || true
+          echo "=== KONIEC SKANU ==="
+
       - name: Publish test results
         uses: dorny/test-reporter@v1
         if: always()

@@ -55,9 +55,9 @@ public sealed class TheftClaimsEndpointTests : IClassFixture<WebApplicationFacto
 
         var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("police report number", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("POLICE_REPORT_NUMBER_REQUIRED", body);
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public sealed class TheftClaimsEndpointTests : IClassFixture<WebApplicationFacto
 
         var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
     [Fact]

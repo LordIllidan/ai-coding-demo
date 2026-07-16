@@ -45,7 +45,7 @@ public class ClaimServiceTests
         var request = new CreateTheftClaimRequest(
             policyId, new DateOnly(2026, 1, 1), "Kradziez pojazdu.", null);
 
-        await Assert.ThrowsAsync<DomainException>(() => claims.RegisterTheftClaimAsync(request));
+        await Assert.ThrowsAsync<FieldValidationException>(() => claims.RegisterTheftClaimAsync(request));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class ClaimServiceTests
         var request = new CreateTheftClaimRequest(
             policyId, new DateOnly(2026, 1, 1), "Kradziez pojazdu.", "   ");
 
-        await Assert.ThrowsAsync<DomainException>(() => claims.RegisterTheftClaimAsync(request));
+        await Assert.ThrowsAsync<FieldValidationException>(() => claims.RegisterTheftClaimAsync(request));
     }
 
     [Fact]
@@ -68,12 +68,12 @@ public class ClaimServiceTests
             policyId, new DateOnly(2026, 1, 1), "Kradziez pojazdu.", "KMP/123/2026");
 
         var claim = await claims.RegisterTheftClaimAsync(request);
-        var fetched = await claims.GetTheftClaimAsync(claim.Id);
+        var fetched = await claims.GetTheftClaimAsync(claim.ClaimId);
 
         Assert.Equal(policyId, claim.PolicyId);
         Assert.Equal("KMP/123/2026", claim.PoliceReportNumber);
         Assert.NotNull(fetched);
-        Assert.Equal(claim.Id, fetched!.Id);
+        Assert.Equal(claim.ClaimId, fetched!.ClaimId);
     }
 
     [Fact]

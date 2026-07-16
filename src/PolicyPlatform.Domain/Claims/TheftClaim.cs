@@ -9,6 +9,7 @@ public sealed class TheftClaim : Entity
     public string Description { get; }
     public PoliceReportNumber PoliceReportNumber { get; }
     public DateTime ReportedAt { get; }
+    public string Status { get; } = "ACCEPTED";
 
     private TheftClaim(
         Guid id, Guid policyId, DateOnly incidentDate, string description,

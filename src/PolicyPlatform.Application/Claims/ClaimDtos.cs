@@ -9,18 +9,16 @@ public sealed record CreateTheftClaimRequest(
     string? PoliceReportNumber);
 
 public sealed record TheftClaimDto(
-    Guid Id,
+    Guid ClaimId,
     Guid PolicyId,
-    DateOnly IncidentDate,
-    string Description,
     string PoliceReportNumber,
-    DateTime ReportedAt)
+    string Status,
+    bool NextStepAllowed)
 {
     public static TheftClaimDto FromDomain(TheftClaim claim) => new(
         claim.Id,
         claim.PolicyId,
-        claim.IncidentDate,
-        claim.Description,
         claim.PoliceReportNumber.Value,
-        claim.ReportedAt);
+        claim.Status,
+        NextStepAllowed: claim.Status == "ACCEPTED");
 }

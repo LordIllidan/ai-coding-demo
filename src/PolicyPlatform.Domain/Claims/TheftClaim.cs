@@ -9,6 +9,9 @@ public sealed class TheftClaim : Entity
     public string Description { get; }
     public PoliceReportNumber PoliceReportNumber { get; }
     public DateTime ReportedAt { get; }
+
+    /// <summary>Processing status of the claim. Always <c>ACCEPTED</c> on registration, since
+    /// <see cref="Register"/> only returns once the police report number has passed validation.</summary>
     public string Status { get; } = "ACCEPTED";
 
     private TheftClaim(

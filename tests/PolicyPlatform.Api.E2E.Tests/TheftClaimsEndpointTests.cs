@@ -131,4 +131,81 @@ public sealed class TheftClaimsEndpointTests : IClassFixture<WebApplicationFacto
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Post_EmptyPolicyId_ReturnsBadRequest()
+    {
+        var request = new CreateTheftClaimRequest(Guid.Empty, "KMP/123/2026");
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_PoliceReportNumberAtMinLength_IsAccepted()
+    {
+        var policyId = await CreateActivePolicyAsync();
+        var request = new CreateTheftClaimRequest(policyId, "A12");
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<TheftClaimDto>();
+        Assert.Equal("A12", created!.PoliceReportNumber);
+    }
+
+    [Fact]
+    public async Task Post_PoliceReportNumberAtMaxLength_IsAccepted()
+    {
+        var policyId = await CreateActivePolicyAsync();
+        var fiftyChars = "A" + new string('9', 49);
+        var request = new CreateTheftClaimRequest(policyId, fiftyChars);
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<TheftClaimDto>();
+        Assert.Equal(50, created!.PoliceReportNumber.Length);
+    }
+
+    [Fact]
+    public async Task Post_PoliceReportNumberTooLong_ReturnsUnprocessableEntity()
+    {
+        var policyId = await CreateActivePolicyAsync();
+        var fiftyOneChars = "A" + new string('9', 50);
+        var request = new CreateTheftClaimRequest(policyId, fiftyOneChars);
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponseDto>();
+        Assert.Equal("POLICE_REPORT_NUMBER_INVALID_FORMAT", body!.FieldErrors[0].Code);
+    }
+
+    [Fact]
+    public async Task Post_PoliceReportNumberWithDisallowedCharacter_ReturnsUnprocessableEntity()
+    {
+        var policyId = await CreateActivePolicyAsync();
+        var request = new CreateTheftClaimRequest(policyId, "KMP@123");
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ValidationErrorResponseDto>();
+        Assert.Equal("POLICE_REPORT_NUMBER_INVALID_FORMAT", body!.FieldErrors[0].Code);
+    }
+
+    [Fact]
+    public async Task Post_PoliceReportNumberWithLeadingTrailingWhitespace_IsTrimmedAndNormalized()
+    {
+        var policyId = await CreateActivePolicyAsync();
+        var request = new CreateTheftClaimRequest(policyId, "  kmp/123/2026  ");
+
+        var response = await _client.PostAsJsonAsync("/api/theft-claims", request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<TheftClaimDto>();
+        Assert.Equal("KMP/123/2026", created!.PoliceReportNumber);
+    }
 }

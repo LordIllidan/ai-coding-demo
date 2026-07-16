@@ -13,6 +13,7 @@ public sealed class PolicyPlatformDbContext : DbContext
 
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Customer> Customers => Set<Customer>();
+    /// <summary>Vehicle theft claims (<c>theft_claim</c> table).</summary>
     public DbSet<TheftClaim> TheftClaims => Set<TheftClaim>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -17,6 +17,13 @@ public sealed class ClaimService
         _policies = policies;
     }
 
+    /// <summary>Validates and registers a new theft claim: validates the police report number
+    /// first (AISDLC-51 contract), then confirms the referenced policy exists.</summary>
+    /// <param name="request">The claim request, including raw policy id and police report number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The registered claim.</returns>
+    /// <exception cref="TheftClaimValidationException">Thrown when <see cref="CreateTheftClaimRequest.PoliceReportNumber"/> is missing or invalid.</exception>
+    /// <exception cref="DomainException">Thrown when the referenced policy does not exist.</exception>
     public async Task<TheftClaimDto> RegisterTheftClaimAsync(
         CreateTheftClaimRequest request, CancellationToken ct = default)
     {
@@ -39,6 +46,10 @@ public sealed class ClaimService
         return TheftClaimDto.FromDomain(claim);
     }
 
+    /// <summary>Retrieves a previously registered theft claim by id.</summary>
+    /// <param name="claimId">Identifier of the claim.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The claim, or <c>null</c> if no claim with that id exists.</returns>
     public async Task<TheftClaimDto?> GetTheftClaimAsync(Guid claimId, CancellationToken ct = default)
     {
         var claim = await _claims.GetByIdAsync(claimId, ct);

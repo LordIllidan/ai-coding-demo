@@ -4,8 +4,12 @@ using PolicyPlatform.Domain.Claims;
 
 namespace PolicyPlatform.Infrastructure.Persistence.Configurations;
 
+/// <summary>EF Core mapping for <see cref="TheftClaim"/> to the <c>theft_claim</c> table
+/// (AISDLC-51 contract columns).</summary>
 public sealed class TheftClaimConfiguration : IEntityTypeConfiguration<TheftClaim>
 {
+    /// <summary>Configures column names, types, and constraints for <see cref="TheftClaim"/>.</summary>
+    /// <param name="builder">Entity type builder supplied by EF Core.</param>
     public void Configure(EntityTypeBuilder<TheftClaim> builder)
     {
         builder.ToTable("theft_claim");

@@ -14,6 +14,12 @@ public sealed class PolicyStatusRequestService
 
     public PolicyStatusRequestService(IPolicyStatusLookupRepository lookup) => _lookup = lookup;
 
+    /// <summary>Decides the business outcome of a policy-status lookup. Invalid policy number/PESEL
+    /// shape and "no matching policy" both resolve to <see cref="PolicyStatusReplyMapper.NotVerified"/>
+    /// so callers cannot distinguish the two.</summary>
+    /// <param name="request">Raw policy number and PESEL as received from the SMS gateway.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The reply to send back to the sender.</returns>
     public async Task<PolicyStatusReply> HandleAsync(PolicyStatusRequest request, CancellationToken ct = default)
     {
         var requestId = Guid.NewGuid();

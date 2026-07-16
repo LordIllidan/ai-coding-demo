@@ -39,7 +39,13 @@ jobs:
       # Celowo NIE blokuje builda (zawsze exit 0) — to zrodlo danych dla SecurityAgent ETAP
       # "kod" (Jira), nie gate CI. Bridge czyta ten output z logu runu i wkleja do Jiry jako
       # komentarz "SKAN BEZPIECZENSTWA:" na historyjce.
+      # if: success() || failure() — musi sie odpalic NAWET gdy Build/Test wczesniej w tym
+      # jobie padl (real bug zlapany live: PR z niepoprawnym kodem CodingAgenta nigdy nie
+      # dostawal skanu, bo GitHub Actions domyslnie pomija kolejne kroki po failure).
+      # Restore zawsze musi przejsc (skan operuje na przywroconych pakietach), ale Build/Test
+      # moga sie wywalic i skan i tak ma sens.
       - name: Security scan (vulnerable packages)
+        if: success() || failure()
         run: |
           echo "=== SKAN BEZPIECZENSTWA: dotnet list package --vulnerable ==="
           dotnet list PolicyPlatform.slnx package --vulnerable --include-transitive || true

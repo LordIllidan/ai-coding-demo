@@ -2,35 +2,38 @@ using PolicyPlatform.Domain.Common;
 
 namespace PolicyPlatform.Domain.Claims;
 
+public enum TheftClaimStatus
+{
+    Accepted,
+}
+
 public sealed class TheftClaim : Entity
 {
     public Guid PolicyId { get; }
-    public DateOnly IncidentDate { get; }
-    public string Description { get; }
     public PoliceReportNumber PoliceReportNumber { get; }
-    public DateTime ReportedAt { get; }
+    public TheftClaimStatus Status { get; }
+    public DateTime CreatedAt { get; }
+    public DateTime UpdatedAt { get; }
 
     private TheftClaim(
-        Guid id, Guid policyId, DateOnly incidentDate, string description,
-        PoliceReportNumber policeReportNumber, DateTime reportedAt)
+        Guid id, Guid policyId, PoliceReportNumber policeReportNumber, TheftClaimStatus status,
+        DateTime createdAt, DateTime updatedAt)
         : base(id)
     {
         PolicyId = policyId;
-        IncidentDate = incidentDate;
-        Description = description;
         PoliceReportNumber = policeReportNumber;
-        ReportedAt = reportedAt;
+        Status = status;
+        CreatedAt = createdAt;
+        UpdatedAt = updatedAt;
     }
 
-    public static TheftClaim Register(
-        Guid id, Guid policyId, DateOnly incidentDate, string description,
-        PoliceReportNumber policeReportNumber, DateTime reportedAt)
+    public static TheftClaim Register(Guid id, Guid policyId, PoliceReportNumber policeReportNumber, DateTime now)
     {
         if (policyId == Guid.Empty)
         {
             throw new DomainException("Theft claim must reference a valid policy.");
         }
 
-        return new TheftClaim(id, policyId, incidentDate, description, policeReportNumber, reportedAt);
+        return new TheftClaim(id, policyId, policeReportNumber, TheftClaimStatus.Accepted, now, now);
     }
 }

@@ -20,16 +20,20 @@ public sealed class ClaimService
     public async Task<TheftClaimDto> RegisterTheftClaimAsync(
         CreateTheftClaimRequest request, CancellationToken ct = default)
     {
+        if (!PoliceReportNumber.TryCreate(request.PoliceReportNumber, out var policeReportNumber, out var error))
+        {
+            var code = error == PoliceReportNumberError.Required
+                ? "POLICE_REPORT_NUMBER_REQUIRED"
+                : "POLICE_REPORT_NUMBER_INVALID_FORMAT";
+            throw new TheftClaimValidationException([
+                new FieldError("policeReportNumber", code, "Numer zgłoszenia Policji jest wymagany i musi być poprawny.")
+            ]);
+        }
+
         _ = await _policies.GetByIdAsync(request.PolicyId, ct)
             ?? throw new DomainException($"Policy {request.PolicyId} was not found.");
 
-        var claim = TheftClaim.Register(
-            Guid.NewGuid(),
-            request.PolicyId,
-            request.IncidentDate,
-            request.Description,
-            new PoliceReportNumber(request.PoliceReportNumber),
-            DateTime.UtcNow);
+        var claim = TheftClaim.Register(Guid.NewGuid(), request.PolicyId, policeReportNumber, DateTime.UtcNow);
 
         await _claims.AddAsync(claim, ct);
         return TheftClaimDto.FromDomain(claim);

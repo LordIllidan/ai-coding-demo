@@ -18,7 +18,11 @@ public sealed class ClaimsController : ControllerBase
         try
         {
             var claim = await _claimService.RegisterTheftClaimAsync(request, ct);
-            return CreatedAtAction(nameof(GetById), new { id = claim.Id }, claim);
+            return CreatedAtAction(nameof(GetById), new { id = claim.ClaimId }, claim);
+        }
+        catch (TheftClaimValidationException ex)
+        {
+            return UnprocessableEntity(new ValidationErrorResponse("VALIDATION_ERROR", ex.FieldErrors));
         }
         catch (DomainException ex)
         {

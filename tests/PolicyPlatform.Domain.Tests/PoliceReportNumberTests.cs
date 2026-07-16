@@ -1,5 +1,4 @@
 using PolicyPlatform.Domain.Claims;
-using PolicyPlatform.Domain.Common;
 using Xunit;
 
 namespace PolicyPlatform.Domain.Tests;
@@ -10,23 +9,39 @@ public class PoliceReportNumberTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_MissingValue_Throws(string? value)
+    public void TryCreate_MissingValue_ReturnsRequiredError(string? value)
     {
-        Assert.Throws<DomainException>(() => new PoliceReportNumber(value));
+        var ok = PoliceReportNumber.TryCreate(value, out _, out var error);
+
+        Assert.False(ok);
+        Assert.Equal(PoliceReportNumberError.Required, error);
+    }
+
+    [Theory]
+    [InlineData("AB")]
+    [InlineData("KMP#123")]
+    public void TryCreate_InvalidFormat_ReturnsInvalidFormatError(string value)
+    {
+        var ok = PoliceReportNumber.TryCreate(value, out _, out var error);
+
+        Assert.False(ok);
+        Assert.Equal(PoliceReportNumberError.InvalidFormat, error);
     }
 
     [Fact]
-    public void Constructor_ValidValue_TrimsWhitespace()
+    public void TryCreate_ValidValue_TrimsAndUppercases()
     {
-        var number = new PoliceReportNumber("  KMP/123/2026  ");
+        var ok = PoliceReportNumber.TryCreate("  kmp/123/2026  ", out var number, out var error);
 
+        Assert.True(ok);
+        Assert.Null(error);
         Assert.Equal("KMP/123/2026", number.Value);
     }
 
     [Fact]
     public void ToString_ReturnsValue()
     {
-        var number = new PoliceReportNumber("KMP/123/2026");
+        PoliceReportNumber.TryCreate("KMP/123/2026", out var number, out _);
 
         Assert.Equal("KMP/123/2026", number.ToString());
     }

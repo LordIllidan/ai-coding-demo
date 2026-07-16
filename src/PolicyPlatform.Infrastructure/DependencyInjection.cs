@@ -5,8 +5,10 @@ using PolicyPlatform.Application.Abstractions;
 using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
 using PolicyPlatform.Application.Policies;
+using PolicyPlatform.Application.Sms;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
+using PolicyPlatform.Infrastructure.Sms;
 
 namespace PolicyPlatform.Infrastructure;
 
@@ -41,6 +43,10 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+
+        // SMS policy-status decision logic (policy/PESEL lookup) is a separate, unscoped
+        // piece of work — the placeholder keeps the request/validation flow runnable now.
+        services.AddSingleton<IPolicyStatusRequestHandler, PendingPolicyStatusRequestHandler>();
         return services;
     }
 }

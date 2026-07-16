@@ -4,8 +4,10 @@ using PolicyPlatform.Domain.Claims;
 
 namespace PolicyPlatform.Infrastructure.Persistence.Configurations;
 
+/// <summary>EF Core mapping for <see cref="TheftClaim"/> onto the <c>theft_claim</c> table.</summary>
 public sealed class TheftClaimConfiguration : IEntityTypeConfiguration<TheftClaim>
 {
+    /// <summary>Configures column names, lengths, and required-ness for <see cref="TheftClaim"/>.</summary>
     public void Configure(EntityTypeBuilder<TheftClaim> builder)
     {
         builder.ToTable("theft_claim");

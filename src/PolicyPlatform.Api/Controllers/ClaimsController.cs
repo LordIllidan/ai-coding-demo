@@ -13,6 +13,13 @@ public sealed class ClaimsController : ControllerBase
 
     public ClaimsController(ClaimService claimService) => _claimService = claimService;
 
+    /// <summary>Registers a theft claim after validating the police report number.</summary>
+    /// <param name="request">Policy id and police report number to validate/normalize.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// 201 with the created claim on success; 422 with a <see cref="ValidationErrorResponse"/>
+    /// if the police report number is missing or malformed; 400 if the policy does not exist.
+    /// </returns>
     [HttpPost]
     public async Task<ActionResult<TheftClaimCreatedResponse>> Create(CreateTheftClaimRequest request, CancellationToken ct)
     {

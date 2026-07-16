@@ -45,4 +45,22 @@ public class PoliceReportNumberTests
 
         Assert.Equal("KMP/123/2026", number.ToString());
     }
+
+    [Fact]
+    public void Create_ValidValue_TrimsAndUppercases()
+    {
+        var number = PoliceReportNumber.Create("  kmp/123/2026  ");
+
+        Assert.Equal("KMP/123/2026", number.Value);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("AB")]
+    [InlineData("KMP#123")]
+    public void Create_InvalidValue_Throws(string? value)
+    {
+        Assert.Throws<ArgumentException>(() => PoliceReportNumber.Create(value));
+    }
 }

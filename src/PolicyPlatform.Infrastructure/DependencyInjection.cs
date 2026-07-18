@@ -41,6 +41,10 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+
+        // Payouts likewise have no durable store yet — see InMemoryPayoutRepository.
+        services.AddSingleton<IPayoutRepository, InMemoryPayoutRepository>();
+        services.AddScoped<PayoutService>();
         return services;
     }
 }

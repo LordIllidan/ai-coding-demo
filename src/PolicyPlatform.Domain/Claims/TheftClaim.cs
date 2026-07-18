@@ -10,6 +10,11 @@ public sealed class TheftClaim : Entity
     public PoliceReportNumber PoliceReportNumber { get; }
     public DateTime ReportedAt { get; }
 
+    /// <summary>Human-readable claim reference. There is no dedicated numbering scheme for
+    /// claims yet (unlike PolicyNumber/SequentialPolicyNumberGenerator for policies), so this
+    /// is derived from the id until that lands.</summary>
+    public string ClaimNumber => $"SZK-{Id:N}"[..12].ToUpperInvariant();
+
     private TheftClaim(
         Guid id, Guid policyId, DateOnly incidentDate, string description,
         PoliceReportNumber policeReportNumber, DateTime reportedAt)

@@ -16,8 +16,16 @@ public sealed class MobileClaimsController : ControllerBase
 {
     private readonly ClaimPayoutService _claimPayoutService;
 
+    /// <param name="claimPayoutService">Use case backing the last-payout read.</param>
     public MobileClaimsController(ClaimPayoutService claimPayoutService) => _claimPayoutService = claimPayoutService;
 
+    /// <summary>Returns the logged-in customer's most recently paid claim installment.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// 200 with the <see cref="LastPayoutDto"/> on success; 403 FORBIDDEN_CROSS_CUSTOMER if the
+    /// token carries no resolvable customer identity; 404 LAST_PAYOUT_NOT_FOUND if the customer
+    /// has no paid installment; 503 DATA_SOURCE_TIMEOUT if the data source times out.
+    /// </returns>
     [HttpGet("last-payout")]
     public async Task<ActionResult<LastPayoutDto>> GetLastPayout(CancellationToken ct)
     {

@@ -7,6 +7,7 @@ using PolicyPlatform.Application.Customers;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
+using PolicyPlatform.Infrastructure.Security;
 
 namespace PolicyPlatform.Infrastructure;
 
@@ -41,6 +42,12 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+
+        // Same story for claim_payout: no durable store yet, so the last-payout read model
+        // is backed by an in-memory stand-in until an EF Core provider lands.
+        services.AddSingleton<ILastPayoutRepository, InMemoryLastPayoutRepository>();
+        services.AddSingleton<ICustomerIdentityResolver, JwtCustomerIdentityResolver>();
+        services.AddScoped<LastPayoutService>();
         return services;
     }
 }

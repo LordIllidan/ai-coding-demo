@@ -13,8 +13,16 @@ public sealed class MobileLastPayoutController : ControllerBase
 {
     private readonly LastPayoutService _service;
 
+    /// <summary>Creates the controller with its last-payout use-case dependency.</summary>
+    /// <param name="service">Use-case that resolves the caller's identity and fetches their last payout.</param>
     public MobileLastPayoutController(LastPayoutService service) => _service = service;
 
+    /// <summary>Returns the authenticated customer's last paid claim payout. Read-only: no
+    /// request body or query parameters are accepted, and the customer is identified solely
+    /// from the bearer token.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 with the payout on success; 401/403/404/503 error envelopes on failure per
+    /// <see cref="LastPayoutErrorMapper"/>.</returns>
     [HttpGet]
     public async Task<IActionResult> GetLastPayout(CancellationToken ct)
     {

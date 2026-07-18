@@ -7,6 +7,12 @@ namespace PolicyPlatform.Api.ErrorHandling;
 /// contract: { code, message, retryable, correlationId }.</summary>
 public static class LastPayoutErrorMapper
 {
+    /// <summary>Maps a known last-payout exception to its HTTP status code and error envelope.</summary>
+    /// <param name="exception">One of AuthRequiredException, ForbiddenCrossCustomerException,
+    /// LastPayoutNotFoundException, or DataSourceTimeoutException.</param>
+    /// <param name="correlationId">Request trace identifier to embed in the envelope.</param>
+    /// <returns>The HTTP status code and error envelope to return to the caller.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The exception type has no known mapping.</exception>
     public static (int StatusCode, ErrorEnvelope Envelope) Map(Exception exception, string correlationId) =>
         exception switch
         {

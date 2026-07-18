@@ -14,6 +14,13 @@ public sealed class JwtCustomerIdentityResolver : ICustomerIdentityResolver
     private const string BearerPrefix = "Bearer ";
     private const string ExpectedAudience = "mobile-client";
 
+    /// <summary>Extracts and validates the customer id from the unverified JWT payload.</summary>
+    /// <param name="authorizationHeaderValue">Raw value of the incoming Authorization header, e.g. "Bearer &lt;token&gt;".</param>
+    /// <returns>The customer id parsed from the token's "sub" claim.</returns>
+    /// <exception cref="AuthRequiredException">The header is missing, malformed, or the token is
+    /// structurally invalid, unparseable, expired, or missing a valid "sub" claim.</exception>
+    /// <exception cref="ForbiddenCrossCustomerException">The token has an "aud" claim that does
+    /// not match the expected mobile-client audience.</exception>
     public Guid ResolveCustomerId(string? authorizationHeaderValue)
     {
         if (string.IsNullOrWhiteSpace(authorizationHeaderValue) ||
@@ -69,6 +76,9 @@ public sealed class JwtCustomerIdentityResolver : ICustomerIdentityResolver
         return customerId;
     }
 
+    /// <summary>Decodes a base64url-encoded JWT segment to its raw bytes.</summary>
+    /// <param name="input">Base64url-encoded segment (no padding).</param>
+    /// <returns>The decoded bytes.</returns>
     private static byte[] Base64UrlDecode(string input)
     {
         var padded = input.Replace('-', '+').Replace('_', '/');

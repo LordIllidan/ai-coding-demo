@@ -5,8 +5,10 @@ using PolicyPlatform.Application.Abstractions;
 using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
 using PolicyPlatform.Application.Policies;
+using PolicyPlatform.Infrastructure.Integration;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
+using PolicyPlatform.Infrastructure.Security;
 
 namespace PolicyPlatform.Infrastructure;
 
@@ -41,6 +43,11 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+
+        services.AddSingleton<IClaimLastPaidTrancheViewRepository, InMemoryClaimLastPaidTrancheViewRepository>();
+        services.AddSingleton<ITrancheIntegrationClient, InMemoryTrancheIntegrationClient>();
+        services.AddSingleton<IClaimAccessValidator, BearerClaimAccessValidator>();
+        services.AddScoped<ClaimLastPaidTrancheService>();
         return services;
     }
 }

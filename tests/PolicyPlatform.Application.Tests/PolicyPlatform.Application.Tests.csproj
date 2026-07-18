@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\PolicyPlatform.Api\PolicyPlatform.Api.csproj" />
     <ProjectReference Include="..\..\src\PolicyPlatform.Application\PolicyPlatform.Application.csproj" />
     <ProjectReference Include="..\..\src\PolicyPlatform.Domain\PolicyPlatform.Domain.csproj" />
     <ProjectReference Include="..\..\src\PolicyPlatform.Infrastructure\PolicyPlatform.Infrastructure.csproj" />

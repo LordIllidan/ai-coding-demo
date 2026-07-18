@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- CI runs `dotnet test PolicyPlatform.slnx --logger "trx;LogFileName=test-results.trx"`
+       against all three test projects in one invocation. Without an explicit, per-project
+       results directory, VSTest resolves the trx output relative to the working directory
+       the solution-level `dotnet test` runs from, so all three projects race to write the
+       same "test-results.trx" path and can clobber or drop each other's report — leaving
+       the CI "Publish test results" step unable to find **/test-results.trx. Giving each
+       test project its own results directory keeps the three trx files distinct so the glob
+       always finds them. -->
+  <PropertyGroup>
+    <VSTestResultsDirectory>$(MSBuildThisFileDirectory)TestResults/$(MSBuildProjectName)/</VSTestResultsDirectory>
+  </PropertyGroup>
+
+</Project>

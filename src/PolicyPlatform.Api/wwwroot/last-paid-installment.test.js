@@ -4,7 +4,9 @@ const {
   isCompleteInstallment,
   mapPayoutResponse,
   mapErrorResponse,
+  formatAmount,
   EMPTY_STATE_MESSAGE,
+  ERROR_MESSAGES,
 } = require('./last-paid-installment.js');
 
 const FULL_INSTALLMENT = {
@@ -57,6 +59,18 @@ test('mapPayoutResponse: PAID with null lastPaidInstallment falls back to empty 
   assert.equal(result.screenState, 'EMPTY');
 });
 
+test('mapPayoutResponse: unrecognized screenState falls back to empty state', () => {
+  const result = mapPayoutResponse({ claimId: 'c1', screenState: 'SOMETHING_ELSE', lastPaidInstallment: FULL_INSTALLMENT, canEdit: false });
+  assert.equal(result.screenState, 'EMPTY');
+  assert.equal(result.message, EMPTY_STATE_MESSAGE);
+});
+
+test('mapPayoutResponse: null body falls back to empty state', () => {
+  const result = mapPayoutResponse(null);
+  assert.equal(result.screenState, 'EMPTY');
+  assert.equal(result.message, EMPTY_STATE_MESSAGE);
+});
+
 test('isCompleteInstallment: rejects missing/null/undefined/empty-string fields', () => {
   assert.equal(isCompleteInstallment(null), false);
   assert.equal(isCompleteInstallment({}), false);
@@ -84,4 +98,24 @@ test('mapErrorResponse: 500 maps to a technical message without exposing details
   const result = mapErrorResponse(500, { code: 'CLAIM_PAYOUT_LOOKUP_FAILED' });
   assert.equal(result.kind, 'message');
   assert.equal(result.text, 'Wystąpił błąd techniczny. Spróbuj ponownie później.');
+});
+
+test('mapErrorResponse: unrecognized status falls back to UNKNOWN with the response code echoed', () => {
+  const result = mapErrorResponse(400, { code: 'SOME_OTHER_CODE' });
+  assert.equal(result.kind, 'message');
+  assert.equal(result.code, 'SOME_OTHER_CODE');
+  assert.equal(result.text, ERROR_MESSAGES.UNKNOWN);
+});
+
+test('mapErrorResponse: unrecognized status with no body code falls back to UNKNOWN code', () => {
+  const result = mapErrorResponse(400, null);
+  assert.equal(result.kind, 'message');
+  assert.equal(result.code, 'UNKNOWN');
+  assert.equal(result.text, ERROR_MESSAGES.UNKNOWN);
+});
+
+test('formatAmount: formats amount to 2 decimals with currency suffix', () => {
+  assert.equal(formatAmount({ amount: 1234.56, currency: 'PLN' }), '1234.56 PLN');
+  assert.equal(formatAmount({ amount: 5, currency: 'EUR' }), '5.00 EUR');
+  assert.equal(formatAmount({ amount: 1.005, currency: 'PLN' }), '1.00 PLN');
 });

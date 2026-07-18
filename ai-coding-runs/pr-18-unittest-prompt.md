@@ -1,0 +1,375 @@
+You are the UNIT TEST agent in a specialized worker pipeline (separate agents exist for
+coding, e2e tests, and review — stay scoped to unit-level test coverage only).
+Running locally through a GitHub self-hosted runner (Windows).
+
+Pull request under test:
+- Repository: LordIllidan/ai-coding-demo
+- PR: #18 AI: [AISDLC-134] Obsłużyć błąd pobrania ostatniej wypłaconej transzy bez serwowania starych danych
+- URL: https://github.com/LordIllidan/ai-coding-demo/pull/18
+- Branch: ai-coding/aisdlc-134-obs-u-y-b-d-pobrania-ostatniej-wyp-aconej-transz-29643061070
+
+Diff introduced by this PR:
+~~~diff
+diff --git a/ai-coding-runs/aisdlc-134-coding-prompt.md b/ai-coding-runs/aisdlc-134-coding-prompt.md
+new file mode 100644
+index 0000000..ebc7ae6
+--- /dev/null
++++ b/ai-coding-runs/aisdlc-134-coding-prompt.md
+@@ -0,0 +1,31 @@
++You are the CODING agent in a specialized worker pipeline (separate agents exist for
++unit tests, e2e tests, and review — do not do their job, stay scoped to implementation).
++Running locally through a GitHub self-hosted runner (Windows).
++
++Source of truth: Jira issue AISDLC-134 (this task has NO corresponding GitHub issue —
++Jira is the only tracker; do not create or reference a GitHub issue).
++
++Task title: Obsłużyć błąd pobrania ostatniej wypłaconej transzy bez serwowania starych danych
++
++Task description:
++~~~markdown
++Parent story: AISDLC-120 — Komunikat błędu i ponowienia, gdy nie uda się pobrać danych transzy
++
++Implementacja backendu dla GET /api/claims/{claimId}/last-paid-tranche: walidacja claimId jako UUID, mapowanie błędów 401/403/404/503/504 do wspólnego envelope oraz brak zwracania cache/starych danych po timeout/circuit breaker. Pliki do sprawdzenia: kontroler/handler endpointu claims, serwis pobierania transzy, mapper błędów, read model/repocitory claim_last_paid_tranche_view. TODO: potwierdzić, że logika używa wyłącznie claimId i że odpowiedź 200 zwraca lastPaidTranche=null, gdy brak danych.
++KONTRAKT: KONTRAKT (TechLeadAgent):
++Endpoint: GET /api/claims/{claimId}/last-paid-tranche. Request przyjmuje wyłącznie path param claimId: string (UUID) oraz nagłówek Authorization: Bearer <token>; nie wolno używać customerId ani policyId w request ani w logice mapowania.
++200 OK: { claimId: string(UUID), lastPaidTranche: { trancheId: string(UUID), trancheNumber: integer, status: 'PAID', paidAt: string(ISO-8601), grossAmount: number(2 dp), currency: string(ISO-4217) } | null, fetchedAt: string(ISO-8601) }. Przy braku danych lastPaidTranche = null.
++Kody błędów: 401 INVALID_TOKEN (brak/wygaśnięty token), 403 CLAIM_ACCESS_DENIED (brak scope do claimId), 404 CLAIM_NOT_FOUND, 503 TRANCHE_SERVICE_UNAVAILABLE (circuit breaker/downstream unavailable), 504 TRANCHE_SERVICE_TIMEOUT (przekroczony timeout integracji). Wspólny error envelope: { code: string, message: string, retryable: boolean, correlationId: string }.
++Walidacje i zachowanie UI: claimId obowiązkowy i musi być UUID; backend nie może zwracać danych z cache/starych odpowiedzi po timeout/circuit breaker; frontend po każdym non-2xx czyści aktualnie widoczne dane, pokazuje komunikat błędu i przycisk 'Ponów' wywołujący ponownie ten sam GET dla tego samego claimId.
++DB/read model: claim_last_paid_tranche_view(claim_id PK, tranche_id, tranche_number, status, paid_at, gross_amount, currency, source_updated_at, refreshed_at). Kolumny identyfikacyjne i relacyjne opierają się na claim_id, nie na customer_id/policy_id.
++~~~
++
++Task:
++1. Implement the requested code change in this repository, scoped to the task above.
++2. You MAY add minimal smoke-level tests if a function is otherwise untestable, but
++   comprehensive unit/e2e test coverage is a SEPARATE worker's job — do not over-invest there.
++3. Do not merge, do not push, and do not create a pull request — the wrapper script handles that.
++4. Do not read or print secrets. Avoid destructive git commands.
++5. Before finishing, leave the workspace ready to commit (diff applied on disk).
++
++Output: short summary of changed files and what each change does.
+\ No newline at end of file
+diff --git a/ai-coding-runs/pr-18-docs-prompt.md b/ai-coding-runs/pr-18-docs-prompt.md
+new file mode 100644
+index 0000000..77fef7c
+--- /dev/null
++++ b/ai-coding-runs/pr-18-docs-prompt.md
+@@ -0,0 +1,426 @@
++You are the DOCUMENTATION agent in a specialized worker pipeline (separate agents handle
++coding, unit tests, e2e tests, database, and review — stay scoped to documentation only,
++never touch executable logic).
++Running locally through a GitHub self-hosted runner (Windows).
++
++Pull request under documentation:
++- Repository: LordIllidan/ai-coding-demo
++- PR: #18 AI: [AISDLC-134] Obsłużyć błąd pobrania ostatniej wypłaconej transzy bez serwowania starych danych
++- URL: https://github.com/LordIllidan/ai-coding-demo/pull/18
++- Branch: ai-coding/aisdlc-134-obs-u-y-b-d-pobrania-ostatniej-wyp-aconej-transz-29643061070
++
++Diff introduced by this PR:
++~~~diff
++diff --git a/ai-coding-runs/aisdlc-134-coding-prompt.md b/ai-coding-runs/aisdlc-134-coding-prompt.md
++new file mode 100644
++index 0000000..ebc7ae6
++--- /dev/null
+++++ b/ai-coding-runs/aisdlc-134-coding-prompt.md
++@@ -0,0 +1,31 @@
+++You are the CODING agent in a specialized worker pipeline (separate agents exist for
+++unit tests, e2e tests, and review — do not do their job, stay scoped to implementation).
+++Running locally through a GitHub self-hosted runner (Windows).
+++
+++Source of truth: Jira issue AISDLC-134 (this task has NO corresponding GitHub issue —
+++Jira is the only tracker; do not create or reference a GitHub issue).
+++
+++Task title: Obsłużyć błąd pobrania ostatniej wypłaconej transzy bez serwowania starych danych
+++
+++Task description:
+++~~~markdown
+++Parent story: AISDLC-120 — Komunikat błędu i ponowienia, gdy nie uda się pobrać danych transzy
+++
+++Implementacja backendu dla GET /api/claims/{claimId}/last-paid-tranche: walidacja claimId jako UUID, mapowanie błędów 401/403/404/503/504 do wspólnego envelope oraz brak zwracania cache/starych danych po timeout/circuit breaker. Pliki do sprawdzenia: kontroler/handler endpointu claims, serwis pobierania transzy, mapper błędów, read model/repocitory claim_last_paid_tranche_view. TODO: potwierdzić, że logika używa wyłącznie claimId i że odpowiedź 200 zwraca lastPaidTranche=null, gdy brak danych.
+++KONTRAKT: KONTRAKT (TechLeadAgent):
+++Endpoint: GET /api/claims/{claimId}/last-paid-tranche. Request przyjmuje wyłącznie path param claimId: string (UUID) oraz nagłówek Authorization: Bearer <token>; nie wolno używać customerId ani policyId w request ani w logice mapowania.
+++200 OK: { claimId: string(UUID), lastPaidTranche: { trancheId: string(UUID), trancheNumber: integer, status: 'PAID', paidAt: string(ISO-8601), grossAmount: number(2 dp), currency: string(ISO-4217) } | null, fetchedAt: string(ISO-8601) }. Przy braku danych lastPaidTranche = null.
+++Kody błędów: 401 INVALID_TOKEN (brak/wygaśnięty token), 403 CLAIM_ACCESS_DENIED (brak scope do claimId), 404 CLAIM_NOT_FOUND, 503 TRANCHE_SERVICE_UNAVAILABLE (circuit breaker/downstream unavailable), 504 TRANCHE_SERVICE_TIMEOUT (przekroczony timeout integracji). Wspólny error envelope: { code: string, message: string, retryable: boolean, correlationId: string }.
+++Walidacje i zachowanie UI: claimId obowiązkowy i musi być UUID; backend nie może zwracać danych z cache/starych odpowiedzi po timeout/circuit breaker; frontend po każdym non-2xx czyści aktualnie widoczne dane, pokazuje komunikat błędu i przycisk 'Ponów' wywołujący ponownie ten sam GET dla tego samego claimId.
+++DB/read model: claim_last_paid_tranche_view(claim_id PK, tranche_id, tranche_number, status, paid_at, gross_amount, currency, source_updated_at, refreshed_at). Kolumny identyfikacyjne i relacyjne opierają się na claim_id, nie na customer_id/policy_id.
+++~~~
+++
+++Task:
+++1. Implement the requested code change in this repository, scoped to the task above.
+++2. You MAY add minimal smoke-level tests if a function is otherwise untestable, but
+++   comprehensive unit/e2e test coverage is a SEPARATE worker's job — do not over-invest there.
+++3. Do not merge, do not push, and do not create a pull request — the wrapper script handles that.
+++4. Do not read or print secrets. Avoid destructive git commands.
+++5. Before finishing, leave the workspace ready to commit (diff applied on disk).
+++
+++Output: short summary of changed files and what each change does.
++\ No newline at end of file
++diff --git a/src/PolicyPlatform.Api/Controllers/ClaimTranchesController.cs b/src/PolicyPlatform.Api/Controllers/ClaimTranchesController.cs
++new file mode 100644
++index 0000000..9ccc717
++--- /dev/null
+++++ b/src/PolicyPlatform.Api/Controllers/ClaimTranchesController.cs
++@@ -0,0 +1,33 @@
+++using Microsoft.AspNetCore.Mvc;
+++using PolicyPlatform.Api.ErrorHandling;
+++using PolicyPlatform.Application.Claims;
+++
+++namespace PolicyPlatform.Api.Controllers;
+++
+++[ApiController]
+++[Route("api/claims")]
+++public sealed class ClaimTranchesController : ControllerBase
+++{
+++    private readonly ClaimLastPaidTrancheService _service;
+++
+++    public ClaimTranchesController(ClaimLastPaidTrancheService service) => _service = service;
+++
+++    [HttpGet("{claimId:guid}/last-paid-tranche")]
+++    public async Task<IActionResult> GetLastPaidTranche(Guid claimId, CancellationToken ct)
+++    {
+++        var correlationId = HttpContext.TraceIdentifier;
+++
+++        try
+++        {
+++            var authorizationHeaderValue = Request.Headers.Authorization.ToString();
+++            var result = await _service.GetLastPaidTrancheAsync(claimId, authorizationHeaderValue, ct);
+++            return Ok(result);
+++        }
+++        catch (Exception ex) when (ex is InvalidTokenException or ClaimAccessDeniedException or ClaimNotFoundException
+++            or TrancheServiceUnavailableException or TrancheServiceTimeoutException)
+++        {
+++            var (statusCode, envelope) = TrancheFetchErrorMapper.Map(ex, correlationId);
+++            return StatusCode(statusCode, envelope);
+++        }
+++    }
+++}
++diff --git a/src/PolicyPlatform.Api/ErrorHandling/TrancheFetchErrorMapper.cs b/src/PolicyPlatform.Api/ErrorHandling/TrancheFetchErrorMapper.cs
++new file mode 100644
++index 0000000..60a7902
++--- /dev/null
+++++ b/src/PolicyPlatform.Api/ErrorHandling/TrancheFetchErrorMapper.cs
++@@ -0,0 +1,30 @@
+++using Microsoft.AspNetCore.Http;
+++using PolicyPlatform.Application.Claims;
+++
+++namespace PolicyPlatform.Api.ErrorHandling;
+++
+++/// <summary>Maps last-paid-tranche fetch failures to the shared error envelope contract:
+++/// { code, message, retryable, correlationId }.</summary>
+++public static class TrancheFetchErrorMapper
+++{
+++    public static (int StatusCode, ErrorEnvelope Envelope) Map(Exception exception, string correlationId) =>
+++        exception switch
+++        {
+++            InvalidTokenException => (
+++                StatusCodes.Status401Unauthorized,
+++                new ErrorEnvelope("INVALID_TOKEN", "Access token is missing or expired.", false, correlationId)),
+++            ClaimAccessDeniedException => (
+++                StatusCodes.Status403Forbidden,
+++                new ErrorEnvelope("CLAIM_ACCESS_DENIED", "You do not have access to this claim.", false, correlationId)),
+++            ClaimNotFoundException => (
+++                StatusCodes.Status404NotFound,
+++                new ErrorEnvelope("CLAIM_NOT_FOUND", "Claim was not found.", false, correlationId)),
+++            TrancheServiceUnavailableException => (
+++                StatusCodes.Status503ServiceUnavailable,
+++                new ErrorEnvelope("TRANCHE_SERVICE_UNAVAILABLE", "Tranche service is temporarily unavailable.", true, correlationId)),
+++            TrancheServiceTimeoutException => (
+++                StatusCodes.Status504GatewayTimeout,
+++                new ErrorEnvelope("TRANCHE_SERVICE_TIMEOUT", "Tranche service did not respond in time.", true, correlationId)),
+++            _ => throw new ArgumentOutOfRangeException(nameof(exception), exception, "Unmapped tranche fetch exception."),
+++        };
+++}
++diff --git a/src/PolicyPlatform.Application/Abstractions/IClaimAccessValidator.cs b/src/PolicyPlatform.Application/Abstractions/IClaimAccessValidator.cs
++new file mode 100644
++index 0000000..9a76d38
++--- /dev/null
+++++ b/src/PolicyPlatform.Application/Abstractions/IClaimAccessValidator.cs
++@@ -0,0 +1,9 @@
+++namespace PolicyPlatform.Application.Abstractions;
+++
+++/// <summary>Validates the caller's bearer token and its scope for a given claim.
+++/// Throws PolicyPlatform.Application.Claims.InvalidTokenException (401) or
+++/// ClaimAccessDeniedException (403) when access must be refused.</summary>
+++public interface IClaimAccessValidator
+++{
+++    Task EnsureAccessAsync(string? authorizationHeaderValue, Guid claimId, CancellationToken ct = default);
+++}
++diff --git a/src/PolicyPlatform.Application/Abstractions/IClaimLastPaidTrancheViewRepository.cs b/src/PolicyPlatform.Application/Abstractions/IClaimLastPaidTrancheViewRepository.cs
++new file mode 100644
++index 0000000..7e04476
++--- /dev/null
+++++ b/src/PolicyPlatform.Application/Abstractions/IClaimLastPaidTrancheViewRepository.cs
++@@ -0,0 +1,22 @@
+++namespace PolicyPlatform.Application.Abstractions;
+++
+++/// <summary>Read model backing claim_last_paid_tranche_view. Keyed by claim_id only —
+++/// never by customer_id/policy_id. Refreshed on a successful downstream fetch; must not
+++/// be consulted to serve a response after a failed fetch (see ITrancheIntegrationClient).</summary>
+++public sealed record ClaimLastPaidTrancheViewRecord(
+++    Guid ClaimId,
+++    Guid TrancheId,
+++    int TrancheNumber,
+++    string Status,
+++    DateTimeOffset PaidAt,
+++    decimal GrossAmount,
+++    string Currency,
+++    DateTimeOffset SourceUpdatedAt,
+++    DateTimeOffset RefreshedAt);
+++
+++public interface IClaimLastPaidTrancheViewRepository
+++{
+++    Task<ClaimLastPaidTrancheViewRecord?> GetAsync(Guid claimId, CancellationToken ct = default);
+++
+++    Task UpsertAsync(ClaimLastPaidTrancheViewRecord record, CancellationToken ct = default);
+++}
++diff --git a/src/PolicyPlatform.Application/Abstractions/ITrancheIntegrationClient.cs b/src/PolicyPlatform.Application/Abstractions/ITrancheIntegrationClient.cs
++new file mode 100644
++index 0000000..c47a3ab
++--- /dev/null
+++++ b/src/PolicyPlatform.Application/Abstractions/ITrancheIntegrationClient.cs
++@@ -0,0 +1,12 @@
+++using PolicyPlatform.Application.Claims;
+++
+++namespace PolicyPlatform.Application.Abstractions;
+++
+++/// <summary>Live gateway to the downstream tranche system. Implementations own the
+++/// timeout/circuit-breaker policy and must throw TrancheServiceUnavailableException or
+++/// TrancheServiceTimeoutException on failure rather than returning a cached result —
+++/// callers must never fall back to stale data when this call fails.</summary>
+++public interface ITrancheIntegrationClient
+++{
+++    Task<LastPaidTrancheDto?> GetLastPaidTrancheAsync(Guid claimId, CancellationToken ct = default);
+++}
++diff --git a/src/PolicyPlatform.Application/Claims/ClaimLastPaidTrancheService.cs b/src/PolicyPlatform.Application/Claims/ClaimLastPaidTrancheService.cs
++new file mode 100644
++index 0000000..dbdef20
++--- /dev/null
+++++ b/src/PolicyPlatform.Application/Claims/ClaimLastPaidTrancheService.cs
++@@ -0,0 +1,62 @@
+++using PolicyPlatform.Application.Abstractions;
+++
+++namespace PolicyPlatform.Application.Claims;
+++
+++/// <summary>Use-case for GET /api/claims/{claimId}/last-paid-tranche. Uses claimId only —
+++/// customerId/policyId never enter the lookup or authorization logic.</summary>
+++public sealed class ClaimLastPaidTrancheService
+++{
+++    private readonly IClaimRepository _claims;
+++    private readonly IClaimAccessValidator _accessValidator;
+++    private readonly ITrancheIntegrationClient _trancheClient;
+++    private readonly IClaimLastPaidTrancheViewRepository _view;
+++    private readonly TimeProvider _clock;
+++
+++    public ClaimLastPaidTrancheService(
+++        IClaimRepository claims,
+++        IClaimAccessValidator accessValidator,
+++        ITrancheIntegrationClient trancheClient,
+++        IClaimLastPaidTrancheViewRepository view,
+++        TimeProvider? clock = null)
+++    {
+++        _claims = claims;
+++        _accessValidator = accessValidator;
+++        _trancheClient = trancheClient;
+++        _view = view;
+++        _clock = clock ?? TimeProvider.System;
+++    }
+++
+++    public async Task<LastPaidTrancheResult> GetLastPaidTrancheAsync(
+++        Guid claimId, string? authorizationHeaderValue, CancellationToken ct = default)
+++    {
+++        await _accessValidator.EnsureAccessAsync(authorizationHeaderValue, claimId, ct);
+++
+++        var claim = await _claims.GetByIdAsync(claimId, ct)
+++            ?? throw new ClaimNotFoundException(claimId);
+++
+++        // No try/catch around this call by design: on timeout or an open circuit breaker the
+++        // client throws and that error must propagate as-is, never masked by a fallback read
+++        // of the (possibly stale) claim_last_paid_tranche_view row.
+++        var tranche = await _trancheClient.GetLastPaidTrancheAsync(claimId, ct);
+++
+++        var fetchedAt = _clock.GetUtcNow();
+++
+++        if (tranche is not null)
+++        {
+++            await _view.UpsertAsync(
+++                new ClaimLastPaidTrancheViewRecord(
+++                    claimId,
+++                    tranche.TrancheId,
+++                    tranche.TrancheNumber,
+++                    tranche.Status,
+++                    tranche.PaidAt,
+++                    tranche.GrossAmount,
+++                    tranche.Currency,
+++                    tranche.PaidAt,
+++                    fetchedAt),
+++                ct);
+++        }
+++
+++        return new LastPaidTrancheResult(claimId, tranche, fetchedAt);
+++    }
+++}
++diff --git a/src/PolicyPlatform.Application/Claims/LastPaidTrancheDtos.cs b/src/PolicyPlatform.Application/Claims/LastPaidTrancheDtos.cs
++new file mode 100644
++index 0000000..4985b13
++--- /dev/null
+++++ b/src/PolicyPlatform.Application/Claims/LastPaidTrancheDtos.cs
++@@ -0,0 +1,13 @@
+++namespace PolicyPlatform.Application.Claims;
+++
+++public sealed record LastPaidTrancheDto(
+++    Guid TrancheId,
+++    int TrancheNumber,
+++    string Status,
+++    DateTimeOffset PaidAt,
+++    decimal GrossAmount,
+++    string Currency);
+++
+++public sealed record LastPaidTrancheResult(Guid ClaimId, LastPaidTrancheDto? LastPaidTranche, DateTimeOffset FetchedAt);
+++
+++public sealed record ErrorEnvelope(string Code, string Message, bool Retryable, string CorrelationId);
++diff --git a/src/PolicyPlatform.Application/Claims/TrancheFetchExceptions.cs b/src/PolicyPlatform.Application/Claims/TrancheFetchExceptions.cs
++new file mode 100644
++index 0000000..eea4f96
++--- /dev/null
+++++ b/src/PolicyPlatform.Application/Claims/TrancheFetchExceptions.cs
++@@ -0,0 +1,21 @@
+++namespace PolicyPlatform.Application.Claims;
+++
+++/// <summary>Authorization header missing, malformed, or the token has expired.</summary>
+++public sealed class InvalidTokenException() : Exception("Access token is missing or invalid.");
+++
+++/// <summary>Token is valid but does not carry a scope for the requested claim.</summary>
+++public sealed class ClaimAccessDeniedException(Guid claimId) : Exception($"Access to claim {claimId} is denied.")
+++{
+++    public Guid ClaimId { get; } = claimId;
+++}
+++
+++public sealed class ClaimNotFoundException(Guid claimId) : Exception($"Claim {claimId} was not found.")
+++{
+++    public Guid ClaimId { get; } = claimId;
+++}
+++
+++/// <summary>Downstream tranche integration is unreachable or its circuit breaker is open.</summary>
+++public sealed class TrancheServiceUnavailableException() : Exception("Tranche service is unavailable.");
+++
+++/// <summary>Downstream tranche integration did not respond within the configured timeout.</summary>
+++public sealed class TrancheServiceTimeoutException() : Exception("Tranche service request timed out.");
++diff --git a/src/PolicyPlatform.Infrastructure/DependencyInjection.cs b/src/PolicyPlatform.Infrastructure/DependencyInjection.cs
++index b5fa109..3f19d5f 100644
++--- a/src/PolicyPlatform.Infrastructure/DependencyInjection.cs
+++++ b/src/PolicyPlatform.Infrastructure/DependencyInjection.cs
++@@ -5,8 +5,
+... diff truncated ...
+~~~
+
+Task:
+1. Identify new or changed functions/methods/classes in the diff that lack unit test coverage.
+2. Write focused unit tests for them, following this repository's existing test conventions
+   (framework, file layout, naming) — inspect existing tests/ before writing new ones.
+3. Do NOT modify production/source code — only add or extend test files. If a change is
+   untestable without a source fix, say so in your output instead of touching source.
+4. Do not merge, push, or create/edit pull requests — the wrapper script handles that.
+5. Do not read or print secrets. Avoid destructive git commands.
+
+Output: short summary of which functions got new test coverage and any gaps you could not cover.

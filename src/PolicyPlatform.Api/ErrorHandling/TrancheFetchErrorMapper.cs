@@ -7,6 +7,12 @@ namespace PolicyPlatform.Api.ErrorHandling;
 /// { code, message, retryable, correlationId }.</summary>
 public static class TrancheFetchErrorMapper
 {
+    /// <summary>Maps a tranche-fetch exception to its HTTP status code and error envelope.</summary>
+    /// <param name="exception">One of the tranche-fetch exceptions declared in
+    /// <c>PolicyPlatform.Application.Claims</c>.</param>
+    /// <param name="correlationId">Correlation id to embed in the envelope.</param>
+    /// <returns>The HTTP status code and the envelope to serialize as the response body.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="exception"/> is not one of the mapped tranche-fetch exception types.</exception>
     public static (int StatusCode, ErrorEnvelope Envelope) Map(Exception exception, string correlationId) =>
         exception switch
         {

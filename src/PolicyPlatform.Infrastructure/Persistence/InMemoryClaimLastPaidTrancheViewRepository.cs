@@ -9,9 +9,11 @@ public sealed class InMemoryClaimLastPaidTrancheViewRepository : IClaimLastPaidT
 {
     private readonly ConcurrentDictionary<Guid, ClaimLastPaidTrancheViewRecord> _rows = new();
 
+    /// <inheritdoc />
     public Task<ClaimLastPaidTrancheViewRecord?> GetAsync(Guid claimId, CancellationToken ct = default)
         => Task.FromResult(_rows.GetValueOrDefault(claimId));
 
+    /// <inheritdoc />
     public Task UpsertAsync(ClaimLastPaidTrancheViewRecord record, CancellationToken ct = default)
     {
         _rows[record.ClaimId] = record;

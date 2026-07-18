@@ -14,9 +14,17 @@ public sealed record ClaimLastPaidTrancheViewRecord(
     DateTimeOffset SourceUpdatedAt,
     DateTimeOffset RefreshedAt);
 
+/// <summary>Repository for the claim_last_paid_tranche_view read model.</summary>
 public interface IClaimLastPaidTrancheViewRepository
 {
+    /// <summary>Reads the cached view row for a claim, if one has been refreshed before.</summary>
+    /// <param name="claimId">Claim identifier (the view's primary key).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The row, or <see langword="null"/> when the view has never been refreshed for this claim.</returns>
     Task<ClaimLastPaidTrancheViewRecord?> GetAsync(Guid claimId, CancellationToken ct = default);
 
+    /// <summary>Inserts or replaces the view row for <paramref name="record"/>'s claim.</summary>
+    /// <param name="record">Row to persist, keyed by its <see cref="ClaimLastPaidTrancheViewRecord.ClaimId"/>.</param>
+    /// <param name="ct">Cancellation token.</param>
     Task UpsertAsync(ClaimLastPaidTrancheViewRecord record, CancellationToken ct = default);
 }

@@ -72,9 +72,20 @@
   <div id="theftResult"></div>
 </section>
 
+<section>
+  <h2>5. Ostatnia wypłacona transza</h2>
+  <label>Claim ID (UUID) <input id="trancheClaimId" placeholder="np. 3fa85f64-5717-4562-b3fc-2c963f66afa6" /></label>
+  <label>Token (Bearer) <input id="trancheToken" placeholder="opcjonalny token dema" /></label>
+  <button onclick="loadLastPaidTranche()">Pobierz</button>
+  <div id="trancheResult"></div>
+  <div id="trancheError" class="field-error"></div>
+  <button id="trancheRetryButton" onclick="retryLastPaidTranche()" style="display:none;">Ponów</button>
+</section>
+
 <div id="log"></div>
 
 <script src="theft-claim-validation.js"></script>
+<script src="last-paid-tranche-client.js"></script>
 <script>
 const log = (msg) => { document.getElementById('log').textContent += msg + "\n"; };
 
@@ -167,6 +178,50 @@ function submitTheftClaim() {
   }
 
   resultEl.textContent = 'Formularz poprawny — zgłoszenie kradzieży gotowe do wysłania.';
+}
+
+let lastRequestedTrancheClaimId = null;
+
+function renderTrancheResult(data) {
+  const t = data.lastPaidTranche;
+  document.getElementById('trancheResult').textContent = t
+    ? `Transza #${t.trancheNumber}: ${t.grossAmount.toFixed(2)} ${t.currency}, wypłacono ${t.paidAt} (${t.status})`
+    : 'Brak wypłaconych transz dla tego zgłoszenia.';
+}
+
+function renderTrancheError(error) {
+  document.getElementById('trancheResult').textContent = '';
+  document.getElementById('trancheError').textContent = `${error.message} (${error.code})`;
+  document.getElementById('trancheRetryButton').style.display = error.retryable ? 'inline-block' : 'none';
+}
+
+async function loadLastPaidTrancheFor(claimId) {
+  lastRequestedTrancheClaimId = claimId;
+  // Czyścimy poprzednie dane/błąd zanim pokażemy wynik nowego żądania, żeby nigdy
+  // nie prezentować nieaktualnych danych jako aktualnych podczas ładowania.
+  document.getElementById('trancheResult').textContent = '';
+  document.getElementById('trancheError').textContent = '';
+  document.getElementById('trancheRetryButton').style.display = 'none';
+
+  const token = document.getElementById('trancheToken').value.trim() || undefined;
+  const result = await LastPaidTrancheClient.fetchLastPaidTranche(claimId, { token });
+
+  if (!result.ok) {
+    renderTrancheError(result.error);
+    return;
+  }
+  renderTrancheResult(result.data);
+}
+
+function loadLastPaidTranche() {
+  const claimId = document.getElementById('trancheClaimId').value.trim();
+  loadLastPaidTrancheFor(claimId);
+}
+
+function retryLastPaidTranche() {
+  // Ponów wykonuje dokładnie to samo żądanie (ten sam claimId), niezależnie od
+  // tego, co użytkownik mógł od tej pory wpisać w polu Claim ID.
+  loadLastPaidTrancheFor(lastRequestedTrancheClaimId);
 }
 
 document.getElementById('effectiveDate').valueAsDate = new Date();

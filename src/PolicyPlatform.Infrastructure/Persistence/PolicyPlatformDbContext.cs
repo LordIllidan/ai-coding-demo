@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PolicyPlatform.Domain.Claims;
 using PolicyPlatform.Domain.Customers;
 using PolicyPlatform.Domain.Policies;
 
@@ -12,6 +13,7 @@ public sealed class PolicyPlatformDbContext : DbContext
 
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<ClaimPayout> ClaimPayouts => Set<ClaimPayout>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

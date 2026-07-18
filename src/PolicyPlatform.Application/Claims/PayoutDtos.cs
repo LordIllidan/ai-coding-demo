@@ -14,6 +14,8 @@ public static class PayoutScreenStates
     public const string IncompleteData = "INCOMPLETE_DATA";
 }
 
+/// <summary>Wire shape of a single paid installment, only ever populated when
+/// screenState is PAID.</summary>
 public sealed record LastPaidInstallmentDto(
     Guid InstallmentId,
     int InstallmentNo,
@@ -21,6 +23,7 @@ public sealed record LastPaidInstallmentDto(
     decimal Amount,
     string Currency);
 
+/// <summary>Response for GET /claims/{claimId}/payouts/last-paid-installment.</summary>
 public sealed record ClaimLastPaidInstallmentResponse(
     Guid ClaimId,
     string ScreenState,
@@ -29,9 +32,18 @@ public sealed record ClaimLastPaidInstallmentResponse(
 {
     // Omitted from the payload entirely (not just null) for NO_PAYOUT/INCOMPLETE_DATA, matching
     // the contract's examples where the key is absent rather than present-and-null.
+    /// <summary>Human-readable claim reference. Present only when screenState is PAID.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ClaimNumber { get; init; }
 
+    /// <summary>Maps a claim and its raw payout record to the response contract, deciding
+    /// PAID vs NO_PAYOUT vs INCOMPLETE_DATA.</summary>
+    /// <param name="claim">The claim the payout belongs to.</param>
+    /// <param name="record">The raw last-paid-installment row, or null when the claim has
+    /// no paid installments.</param>
+    /// <returns>A response with screenState NO_PAYOUT when <paramref name="record"/> is null,
+    /// INCOMPLETE_DATA when any of its fields are missing/invalid, or PAID with the mapped
+    /// installment otherwise.</returns>
     public static ClaimLastPaidInstallmentResponse From(TheftClaim claim, PayoutRecord? record)
     {
         if (record is null)

@@ -10,6 +10,7 @@ public sealed record PayoutRecord(
     decimal? Amount,
     string? Currency);
 
+/// <summary>Reads last-paid-installment data for a claim.</summary>
 public interface IPayoutRepository
 {
     /// <summary>Returns the last paid installment for a claim, selected by filtering on

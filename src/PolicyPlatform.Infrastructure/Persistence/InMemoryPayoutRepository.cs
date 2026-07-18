@@ -10,6 +10,11 @@ public sealed class InMemoryPayoutRepository : IPayoutRepository
 {
     private readonly ConcurrentDictionary<Guid, List<PayoutRecord>> _payoutsByClaimId = new();
 
+    /// <summary>Returns the last paid installment for a claim, ordered by paid date then
+    /// installment number (both descending). Always null until a write/ingestion path exists.</summary>
+    /// <param name="claimId">UUID of the claim to look up.</param>
+    /// <param name="ct">Cancellation token (unused; in-memory lookup is synchronous).</param>
+    /// <returns>The most recent payout record, or null when the claim has none.</returns>
     public Task<PayoutRecord?> GetLastPaidInstallmentAsync(Guid claimId, CancellationToken ct = default)
     {
         if (!_payoutsByClaimId.TryGetValue(claimId, out var payouts) || payouts.Count == 0)

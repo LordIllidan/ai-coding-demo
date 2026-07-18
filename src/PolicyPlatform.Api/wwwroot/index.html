@@ -72,9 +72,17 @@
   <div id="theftResult"></div>
 </section>
 
+<section>
+  <h2>5. Transza odszkodowania (ekran mobilny)</h2>
+  <label>ID szkody (claimId) <input id="payoutClaimId" placeholder="UUID szkody" /></label>
+  <button onclick="loadLastPaidInstallment()">Pokaż transzę</button>
+  <div id="payoutResult"></div>
+</section>
+
 <div id="log"></div>
 
 <script src="theft-claim-validation.js"></script>
+<script src="last-paid-installment.js"></script>
 <script>
 const log = (msg) => { document.getElementById('log').textContent += msg + "\n"; };
 
@@ -167,6 +175,54 @@ function submitTheftClaim() {
   }
 
   resultEl.textContent = 'Formularz poprawny — zgłoszenie kradzieży gotowe do wysłania.';
+}
+
+async function loadLastPaidInstallment() {
+  const claimId = document.getElementById('payoutClaimId').value.trim();
+  const resultEl = document.getElementById('payoutResult');
+  resultEl.textContent = '';
+  if (!claimId) { resultEl.textContent = 'Podaj identyfikator szkody.'; return; }
+
+  let res;
+  try {
+    const token = localStorage.getItem('authToken');
+    res = await fetch(`/api/v1/claims/${encodeURIComponent(claimId)}/payouts/last-paid-installment`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch (e) {
+    resultEl.textContent = LastPaidInstallment.ERROR_MESSAGES.CLAIM_PAYOUT_LOOKUP_FAILED;
+    log(`Payout lookup failed: ${e.message}`);
+    return;
+  }
+
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    return;
+  }
+  if (res.status !== 200) {
+    const err = LastPaidInstallment.mapErrorResponse(res.status, body);
+    resultEl.textContent = err.text;
+    log(`Payout lookup ${res.status}: ${JSON.stringify(body)}`);
+    return;
+  }
+
+  const view = LastPaidInstallment.mapPayoutResponse(body);
+  if (view.screenState === 'PAID') {
+    resultEl.innerHTML = `
+      <table>
+        <tbody>
+          <tr><th>Numer szkody</th><td>${view.claimNumber}</td></tr>
+          <tr><th>Nr transzy</th><td>${view.installment.installmentNo}</td></tr>
+          <tr><th>Data wypłaty</th><td>${view.installment.paidAt}</td></tr>
+          <tr><th>Kwota</th><td>${LastPaidInstallment.formatAmount(view.installment)}</td></tr>
+        </tbody>
+      </table>`;
+  } else {
+    resultEl.textContent = view.message;
+  }
 }
 
 document.getElementById('effectiveDate').valueAsDate = new Date();

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PolicyPlatform.Application.Abstractions;
 using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
+using PolicyPlatform.Application.Mobile;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
@@ -25,12 +26,14 @@ public static class DependencyInjection
         {
             services.AddSingleton<IPolicyRepository, InMemoryPolicyRepository>();
             services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
+            services.AddSingleton<IClaimPayoutRepository, InMemoryClaimPayoutRepository>();
         }
         else
         {
             services.AddDbContext<PolicyPlatformDbContext>(options => options.UseSqlServer(connectionString));
             services.AddScoped<IPolicyRepository, EfPolicyRepository>();
             services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+            services.AddScoped<IClaimPayoutRepository, EfClaimPayoutRepository>();
         }
 
         services.AddSingleton<IPolicyNumberGenerator, SequentialPolicyNumberGenerator>();
@@ -41,6 +44,7 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+        services.AddScoped<MobileClaimPayoutService>();
         return services;
     }
 }

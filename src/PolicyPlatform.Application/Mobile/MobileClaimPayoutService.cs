@@ -12,6 +12,13 @@ public sealed class MobileClaimPayoutService
 
     public MobileClaimPayoutService(IClaimPayoutRepository payouts) => _payouts = payouts;
 
+    /// <summary>Fetches the current customer's most recently paid claim payout, mapped to the
+    /// mobile response contract.</summary>
+    /// <param name="customerId">Id of the authenticated customer (from JWT subject only).</param>
+    /// <param name="ct">Cancellation token for the query.</param>
+    /// <returns>The mapped <see cref="LastPayoutResponse"/>.</returns>
+    /// <exception cref="LastPayoutNotFoundException">The customer has no paid payout.</exception>
+    /// <exception cref="DataSourceUnavailableException">The data source timed out or failed.</exception>
     public async Task<LastPayoutResponse> GetLastPayoutAsync(Guid customerId, CancellationToken ct = default)
     {
         try

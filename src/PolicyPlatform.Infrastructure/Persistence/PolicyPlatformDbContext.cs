@@ -13,6 +13,8 @@ public sealed class PolicyPlatformDbContext : DbContext
 
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Customer> Customers => Set<Customer>();
+
+    /// <summary>Claim payout records, mapped via <see cref="Configurations.ClaimPayoutConfiguration"/>.</summary>
     public DbSet<ClaimPayout> ClaimPayouts => Set<ClaimPayout>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

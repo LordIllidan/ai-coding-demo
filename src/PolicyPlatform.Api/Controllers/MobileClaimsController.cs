@@ -22,6 +22,13 @@ public sealed class MobileClaimsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Returns the current customer's most recently paid claim payout. Read-only —
+    /// the response always carries <c>readOnly: true</c> and there is no corresponding
+    /// write endpoint.</summary>
+    /// <param name="ct">Cancellation token for the request.</param>
+    /// <returns>200 with the last payout; 401 if the token has no resolvable customer identity;
+    /// 404 if the customer has no paid payout; 503 if the data source is unavailable/timed out;
+    /// 500 on an unexpected failure.</returns>
     [HttpGet("last-payout")]
     public async Task<ActionResult<LastPayoutResponse>> GetLastPayout(CancellationToken ct)
     {

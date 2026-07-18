@@ -5,8 +5,12 @@ using PolicyPlatform.Domain.Policies;
 
 namespace PolicyPlatform.Infrastructure.Persistence.Configurations;
 
+/// <summary>EF Core mapping for <see cref="ClaimPayout"/>: owns <see cref="Money"/> as
+/// AmountGross/CurrencyCode columns, and indexes (CustomerId, Status, PaidAt) to support the
+/// "last paid payout for customer" query.</summary>
 public sealed class ClaimPayoutConfiguration : IEntityTypeConfiguration<ClaimPayout>
 {
+    /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<ClaimPayout> builder)
     {
         builder.HasKey(p => p.Id);

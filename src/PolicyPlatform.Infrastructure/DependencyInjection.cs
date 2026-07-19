@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PolicyPlatform.Application.Abstractions;
 using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
+using PolicyPlatform.Application.Notifications;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
@@ -41,6 +42,11 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+
+        // Notifications have no durable store yet (EF Core provider is a separate, unscoped
+        // piece of work) — in-memory keeps the unread-counter flow runnable now.
+        services.AddSingleton<INotificationRepository, InMemoryNotificationRepository>();
+        services.AddScoped<NotificationService>();
         return services;
     }
 }

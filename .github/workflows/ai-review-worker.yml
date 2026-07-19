@@ -4,11 +4,14 @@ name: AI Review Worker
 # label "ai-review-task" nie jest juz nigdzie automatycznie dodawany, wiec ten workflow
 # juz sam z siebie nie odpala. Zostawiony jako reczny fallback (workflow_dispatch) do
 # recenzji pojedynczego PR-a poza normalnym flow.
+#
+# `pull_request: labeled` trigger USUNIETY celowo (byl tu wczesniej) — skoro job i tak
+# zawsze sie skip'owal (label nigdy nie jest dodawany), workflow i tak fiirowal na KAZDY
+# label add na KAZDYM PR (GitHub nie filtruje po nazwie labela na poziomie triggera, tylko
+# job "if:"), co generowalo czysty szum w historii Actions bez zadnej realnej pracy —
+# user zglosil live "duzo duplikatow na CI/CD". Zostaje TYLKO workflow_dispatch.
 
 on:
-  pull_request:
-    types:
-      - labeled
   workflow_dispatch:
     inputs:
       pr_number:
@@ -26,9 +29,6 @@ concurrency:
 jobs:
   review:
     name: Run local Claude Code review worker
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.action == 'labeled' && github.event.label.name == 'ai-review-task')
     runs-on:
       - self-hosted
       - Windows

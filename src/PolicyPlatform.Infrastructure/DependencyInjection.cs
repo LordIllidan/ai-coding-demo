@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PolicyPlatform.Application.Abstractions;
 using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
+using PolicyPlatform.Application.Identity;
 using PolicyPlatform.Application.Policies;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
@@ -25,17 +26,20 @@ public static class DependencyInjection
         {
             services.AddSingleton<IPolicyRepository, InMemoryPolicyRepository>();
             services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
+            services.AddSingleton<ILoginHistoryRepository, InMemoryLoginHistoryRepository>();
         }
         else
         {
             services.AddDbContext<PolicyPlatformDbContext>(options => options.UseSqlServer(connectionString));
             services.AddScoped<IPolicyRepository, EfPolicyRepository>();
             services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+            services.AddScoped<ILoginHistoryRepository, EfLoginHistoryRepository>();
         }
 
         services.AddSingleton<IPolicyNumberGenerator, SequentialPolicyNumberGenerator>();
         services.AddScoped<PolicyService>();
         services.AddScoped<CustomerService>();
+        services.AddScoped<LoginHistoryService>();
 
         // Claims have no durable store yet (EF Core provider is a separate, unscoped
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.

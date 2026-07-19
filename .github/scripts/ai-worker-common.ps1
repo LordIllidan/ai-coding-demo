@@ -28,6 +28,55 @@ function Invoke-Checked {
     }
 }
 
+function Test-TransientGitNetworkError {
+    <# Rozpoznaje przejsciowe bledy sieciowe (np. DNS runnera na chwile padl) - te warto powtorzyc. #>
+    param([Parameter(Mandatory = $true)][string]$ErrorText)
+    $patterns = @(
+        "Could not resolve host",
+        "Failed to connect",
+        "Connection timed out",
+        "Connection reset by peer",
+        "Recv failure",
+        "unable to access",
+        "The requested URL returned error: 5",
+        "Empty reply from server",
+        "Network is unreachable",
+        "Temporary failure in name resolution"
+    )
+    foreach ($pattern in $patterns) {
+        if ($ErrorText -match [regex]::Escape($pattern)) { return $true }
+    }
+    return $false
+}
+
+function Invoke-CheckedWithRetry {
+    <#
+    Jak Invoke-Checked, ale przy przejsciowym bledzie sieciowym (DNS, timeout, reset) probuje ponownie
+    z backoff zamiast od razu wywalac joba. Bledy nie-sieciowe (np. rejected/non-fast-forward) rzuca od razu.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [int]$MaxAttempts = 3,
+        [int[]]$DelaySeconds = @(5, 15)
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $output = & $Command @Arguments 2>&1
+        $output | ForEach-Object { Write-Host $_ }
+        if ($LASTEXITCODE -eq 0) { return }
+
+        $outputText = ($output | ForEach-Object { $_.ToString() }) -join "`n"
+        $isLastAttempt = $attempt -ge $MaxAttempts
+        if ($isLastAttempt -or -not (Test-TransientGitNetworkError -ErrorText $outputText)) {
+            throw "Command failed with exit code ${LASTEXITCODE}: ${Command} $($Arguments -join ' ')`n$outputText"
+        }
+
+        $delay = $DelaySeconds[[Math]::Min($attempt - 1, $DelaySeconds.Length - 1)]
+        Write-Warning "Transient network error on attempt ${attempt}/${MaxAttempts} for '${Command} $($Arguments -join ' ')' - retrying in ${delay}s..."
+        Start-Sleep -Seconds $delay
+    }
+}
+
 function Write-Utf8File {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -75,7 +124,7 @@ function Initialize-FreshBranch {
         [Parameter(Mandatory = $true)][string]$BranchName,
         [Parameter(Mandatory = $true)][string]$BaseBranch
     )
-    Invoke-Checked "git" "fetch" "origin" $BaseBranch | Out-Null
+    Invoke-CheckedWithRetry -Command "git" -Arguments @("fetch", "origin", $BaseBranch)
     Invoke-Checked "git" "switch" "-c" $BranchName "origin/$BaseBranch" | Out-Null
 }
 
@@ -83,7 +132,7 @@ function Checkout-PullRequestBranch {
     <# Do workerow ktore dopisuja do ISTNIEJACEGO PR-a (unittest/e2e) zamiast tworzyc nowy. #>
     param([Parameter(Mandatory = $true)][int]$PullRequestNumber, [Parameter(Mandatory = $true)][string]$Repository)
     $pr = gh pr view $PullRequestNumber --repo $Repository --json number,title,body,url,headRefName,baseRefName | ConvertFrom-Json
-    Invoke-Checked "git" "fetch" "origin" $pr.headRefName | Out-Null
+    Invoke-CheckedWithRetry -Command "git" -Arguments @("fetch", "origin", $pr.headRefName)
     Invoke-Checked "git" "switch" "-C" $pr.headRefName "origin/$($pr.headRefName)" | Out-Null
     return $pr
 }
@@ -109,10 +158,10 @@ function Push-WorkerChanges {
     Invoke-Checked "git" "commit" "-m" $CommitMessage
     Enable-LocalGitCredentialsForPush
     if ($SetUpstream) {
-        Invoke-Checked "git" "push" "-u" "origin" $BranchName
+        Invoke-CheckedWithRetry -Command "git" -Arguments @("push", "-u", "origin", $BranchName)
     }
     else {
-        Invoke-Checked "git" "push" "origin" $BranchName
+        Invoke-CheckedWithRetry -Command "git" -Arguments @("push", "origin", $BranchName)
     }
     return $true
 }

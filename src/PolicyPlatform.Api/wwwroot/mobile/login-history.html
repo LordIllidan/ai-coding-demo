@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Historia logowań</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1rem; }
+  h1 { font-size: 1.2rem; }
+  .login-history-loading, .login-history-empty { color: #888; text-align: center; margin-top: 2rem; }
+  .login-history-error { color: #a33; text-align: center; margin-top: 2rem; }
+  .login-history-list { list-style: none; margin: 0; padding: 0; }
+  .login-history-row { padding: 0.75rem 0; border-bottom: 1px solid #8884; }
+  .login-history-row-primary { display: flex; justify-content: space-between; font-weight: 600; }
+  .login-history-row-secondary { display: flex; gap: 0.75rem; font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
+</style>
+</head>
+<body>
+<h1>Historia logowań</h1>
+<div id="login-history-root"></div>
+
+<script src="login-history-service.js"></script>
+<script src="login-history-viewmodel.js"></script>
+<script src="login-history-list.js"></script>
+<script src="login-history-screen.js"></script>
+</body>
+</html>

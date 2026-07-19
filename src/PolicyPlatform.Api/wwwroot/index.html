@@ -20,6 +20,10 @@
   #log { white-space: pre-wrap; font-family: monospace; font-size: 0.8rem; color: #888; }
   .field-error { color: #a33; font-size: 0.8rem; margin-top: 0.2rem; min-height: 1em; }
   input.invalid { border-color: #a33; outline-color: #a33; }
+  .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.4rem; height: 1.4rem;
+    padding: 0 0.35rem; border-radius: 999px; background: #a33; color: #fff; font-size: 0.85rem; font-weight: 600; }
+  .notif-item { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0; border-bottom: 1px solid #8884; }
 </style>
 </head>
 <body>
@@ -72,9 +76,19 @@
   <div id="theftResult"></div>
 </section>
 
+<section>
+  <h2>5. Powiadomienia (ekran mobilny)</h2>
+  <p>Nieprzeczytane: <span id="notifBadge" class="badge">0</span></p>
+  <button onclick="onScreenEnter()">Wejście na ekran (odśwież)</button>
+  <button onclick="onPushReceived()">Symuluj push</button>
+  <div id="notifCounterResult"></div>
+  <div id="notifList"></div>
+</section>
+
 <div id="log"></div>
 
 <script src="theft-claim-validation.js"></script>
+<script src="notification-counter.js"></script>
 <script>
 const log = (msg) => { document.getElementById('log').textContent += msg + "\n"; };
 
@@ -169,9 +183,82 @@ function submitTheftClaim() {
   resultEl.textContent = 'Formularz poprawny — zgłoszenie kradzieży gotowe do wysłania.';
 }
 
+function authHeaders() {
+  const token = localStorage.getItem('authToken');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function renderBadge(unreadCount) {
+  document.getElementById('notifBadge').textContent = NotificationCounter.formatBadgeValue(unreadCount);
+}
+
+async function handleNotificationsError(res) {
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    return null;
+  }
+  const err = NotificationCounter.mapErrorResponse(res.status, body);
+  document.getElementById('notifCounterResult').textContent = err.text;
+  log(`Notifications ${res.status}: ${JSON.stringify(body)}`);
+  return err;
+}
+
+async function refreshNotificationCounter() {
+  const res = await fetch('/api/mobile/v1/notifications/counter', { headers: authHeaders() });
+  if (res.status !== 200) { await handleNotificationsError(res); return; }
+  const body = await res.json();
+  const counter = NotificationCounter.mapCounterResponse(body);
+  renderBadge(counter.unreadCount);
+  document.getElementById('notifCounterResult').textContent = `Ostatnie odświeżenie: ${counter.calculatedAt}`;
+}
+
+async function loadUnreadNotifications() {
+  const res = await fetch('/api/mobile/v1/notifications?read=false&limit=50', { headers: authHeaders() });
+  if (res.status !== 200) { await handleNotificationsError(res); return; }
+  const body = await res.json();
+  const list = NotificationCounter.mapListResponse(body);
+  const container = document.getElementById('notifList');
+  container.innerHTML = '';
+  for (const item of list.items) {
+    const row = document.createElement('div');
+    row.className = 'notif-item';
+    row.innerHTML = `
+      <span><strong>${item.title}</strong> — ${item.body}</span>
+      <button onclick="markNotificationAsRead('${item.id}')">Oznacz jako przeczytane</button>`;
+    container.appendChild(row);
+  }
+}
+
+async function markNotificationAsRead(notificationId) {
+  const res = await fetch(`/api/mobile/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  if (res.status !== 200) { await handleNotificationsError(res); return; }
+  const body = await res.json();
+  const readResult = NotificationCounter.mapReadResponse(body);
+  renderBadge(NotificationCounter.applyReadResult(readResult).unreadCount);
+  loadUnreadNotifications().catch(() => {});
+}
+
+// "Wejście na ekran" — refresh on screen entry per contract.
+async function onScreenEnter() {
+  await refreshNotificationCounter();
+  await loadUnreadNotifications();
+}
+
+// Push delivery has no payload the client trusts; per contract it just
+// triggers a GET /counter refresh (never bumps the badge locally).
+async function onPushReceived() {
+  await refreshNotificationCounter();
+}
+
 document.getElementById('effectiveDate').valueAsDate = new Date();
 document.getElementById('expiryDate').valueAsDate = new Date(Date.now() + 365 * 24 * 3600 * 1000);
 loadPolicies().catch(() => {});
+onScreenEnter().catch(() => {});
 </script>
 </body>
 </html>

@@ -4,8 +4,10 @@ using PolicyPlatform.Domain.LoginHistory;
 
 namespace PolicyPlatform.Infrastructure.Persistence.Configurations;
 
+/// <summary>EF Core mapping for <see cref="LoginHistoryEntry"/>, including the mandatory (user_id, occurred_at DESC) index.</summary>
 public sealed class LoginHistoryEntryConfiguration : IEntityTypeConfiguration<LoginHistoryEntry>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<LoginHistoryEntry> builder)
     {
         builder.ToTable("LoginHistoryEntries");

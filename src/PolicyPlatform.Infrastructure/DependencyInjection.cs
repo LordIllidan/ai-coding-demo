@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PolicyPlatform.Application.Abstractions;
+using PolicyPlatform.Application.Assistance;
 using PolicyPlatform.Application.Claims;
 using PolicyPlatform.Application.Customers;
 using PolicyPlatform.Application.Policies;
+using PolicyPlatform.Infrastructure.Assistance;
 using PolicyPlatform.Infrastructure.Numbering;
 using PolicyPlatform.Infrastructure.Persistence;
 
@@ -31,6 +33,7 @@ public static class DependencyInjection
             services.AddDbContext<PolicyPlatformDbContext>(options => options.UseSqlServer(connectionString));
             services.AddScoped<IPolicyRepository, EfPolicyRepository>();
             services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+            services.AddScoped<IAssistanceReportRepository, EfAssistanceReportRepository>();
         }
 
         services.AddSingleton<IPolicyNumberGenerator, SequentialPolicyNumberGenerator>();
@@ -41,6 +44,18 @@ public static class DependencyInjection
         // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
         services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
+
+        services.AddScoped<AssistanceReportService>();
+        services.AddHttpClient<IPartnerAssistanceClient, HttpPartnerAssistanceClient>(client =>
+        {
+            var partnerBaseUrl = configuration["PartnerAssistance:BaseUrl"];
+            if (!string.IsNullOrWhiteSpace(partnerBaseUrl))
+            {
+                client.BaseAddress = new Uri(partnerBaseUrl);
+            }
+        });
+        services.AddHostedService<PartnerDispatchRetryWorker>();
+
         return services;
     }
 }

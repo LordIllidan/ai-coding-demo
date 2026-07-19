@@ -28,6 +28,38 @@ function Invoke-Checked {
     }
 }
 
+function Invoke-CheckedWithRetry {
+    <#
+    Jak Invoke-Checked, ale dla operacji sieciowych git (fetch/push): przy przejsciowym
+    bledzie sieci (DNS, polaczenie, 5xx) ponawia z backoffem zamiast od razu rzucac wyjatek.
+    Bezwarunkowo rzuca po ostatniej probie lub gdy blad nie jest rozpoznany jako przejsciowy.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments,
+        [int]$MaxAttempts = 4,
+        [int]$InitialDelaySeconds = 5
+    )
+    $transientPattern = "Could not resolve host|Failed to connect|Connection timed out|Connection reset|Empty reply from server|Recv failure|TLS connection|unable to access|early EOF|Temporary failure in name resolution|The requested URL returned error: 5\d\d"
+    $delaySeconds = $InitialDelaySeconds
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $output = & $Command @Arguments 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            if ($output) { $output | ForEach-Object { Write-Output $_ } }
+            return
+        }
+        $outputText = ($output | Out-String)
+        $isTransient = $outputText -match $transientPattern
+        if ($outputText) { Write-Host $outputText }
+        if (-not $isTransient -or $attempt -eq $MaxAttempts) {
+            throw "Command failed with exit code ${LASTEXITCODE}: ${Command} $($Arguments -join ' ')"
+        }
+        Write-Warning "Transient network error (attempt $attempt/$MaxAttempts) for '${Command} $($Arguments -join ' ')' - retrying in ${delaySeconds}s..."
+        Start-Sleep -Seconds $delaySeconds
+        $delaySeconds = $delaySeconds * 2
+    }
+}
+
 function Write-Utf8File {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -75,7 +107,7 @@ function Initialize-FreshBranch {
         [Parameter(Mandatory = $true)][string]$BranchName,
         [Parameter(Mandatory = $true)][string]$BaseBranch
     )
-    Invoke-Checked "git" "fetch" "origin" $BaseBranch | Out-Null
+    Invoke-CheckedWithRetry "git" "fetch" "origin" $BaseBranch | Out-Null
     Invoke-Checked "git" "switch" "-c" $BranchName "origin/$BaseBranch" | Out-Null
 }
 
@@ -83,7 +115,7 @@ function Checkout-PullRequestBranch {
     <# Do workerow ktore dopisuja do ISTNIEJACEGO PR-a (unittest/e2e) zamiast tworzyc nowy. #>
     param([Parameter(Mandatory = $true)][int]$PullRequestNumber, [Parameter(Mandatory = $true)][string]$Repository)
     $pr = gh pr view $PullRequestNumber --repo $Repository --json number,title,body,url,headRefName,baseRefName | ConvertFrom-Json
-    Invoke-Checked "git" "fetch" "origin" $pr.headRefName | Out-Null
+    Invoke-CheckedWithRetry "git" "fetch" "origin" $pr.headRefName | Out-Null
     Invoke-Checked "git" "switch" "-C" $pr.headRefName "origin/$($pr.headRefName)" | Out-Null
     return $pr
 }
@@ -109,10 +141,10 @@ function Push-WorkerChanges {
     Invoke-Checked "git" "commit" "-m" $CommitMessage
     Enable-LocalGitCredentialsForPush
     if ($SetUpstream) {
-        Invoke-Checked "git" "push" "-u" "origin" $BranchName
+        Invoke-CheckedWithRetry "git" "push" "-u" "origin" $BranchName
     }
     else {
-        Invoke-Checked "git" "push" "origin" $BranchName
+        Invoke-CheckedWithRetry "git" "push" "origin" $BranchName
     }
     return $true
 }

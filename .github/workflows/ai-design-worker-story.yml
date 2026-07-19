@@ -38,9 +38,11 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           AI_CLAUDE_MODEL: ${{ vars.AI_CLAUDE_MODEL || 'sonnet' }}
           AI_CLAUDE_DESIGN_BUDGET_USD: ${{ vars.AI_CLAUDE_DESIGN_BUDGET_USD || '1' }}
+          # Kontrakt przez env, nie CLI arg -- dowolny tekst z Jiry moze zawierac cudzyslowy
+          # ktore psuja parsowanie PowerShella gdy interpolowane wprost w "run:".
+          CONTRACT_TEXT: ${{ github.event.client_payload.contract }}
         run: |
           .\.github\scripts\ai-design-worker-story.ps1 `
             -StoryKey "${{ github.event.client_payload.story_key }}" `
             -StoryStatus "${{ github.event.client_payload.story_status }}" `
-            -Contract "${{ github.event.client_payload.contract }}" `
             -RunId "${{ github.run_id }}"

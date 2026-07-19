@@ -6,9 +6,6 @@ param(
     [string]$StoryStatus,
 
     [Parameter(Mandatory = $true)]
-    [string]$Contract,
-
-    [Parameter(Mandatory = $true)]
     [string]$RunId
 )
 
@@ -17,6 +14,16 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot "ai-worker-common.ps1")
 
 Test-RequiredCommand "claude"
+
+# Kontrakt PRZEZ env var, NIE jako CLI arg -- tekst kontraktu jest dowolnym tekstem z Jiry
+# (moze zawierac cudzyslowy, backticki, nowe linie) i interpolowany bezposrednio w YAML
+# "run:" jako argument psuje parsowanie PowerShella (realny bug zlapany live: kontrakt z
+# cudzyslowem urwal argument w polowie, "A positional parameter cannot be found that
+# accepts argument 'W'"). Env var nie przechodzi przez ten sam shell-quoting krok.
+if (-not (Get-Item "env:CONTRACT_TEXT" -ErrorAction SilentlyContinue)) {
+    throw "Missing required env: CONTRACT_TEXT"
+}
+$Contract = $env:CONTRACT_TEXT
 
 foreach ($name in "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN") {
     if (-not (Get-Item "env:$name" -ErrorAction SilentlyContinue)) {

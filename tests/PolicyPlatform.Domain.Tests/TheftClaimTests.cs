@@ -6,31 +6,28 @@ namespace PolicyPlatform.Domain.Tests;
 
 public class TheftClaimTests
 {
-    private static TheftClaim CreateClaim(Guid policyId) => TheftClaim.Register(
-        Guid.NewGuid(),
-        policyId,
-        new DateOnly(2026, 1, 1),
-        "Skradziono pojazd z parkingu.",
-        new PoliceReportNumber("KMP/123/2026"),
-        new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc));
+    private static PoliceReportNumber CreateReportNumber() =>
+        PoliceReportNumber.TryCreate("KMP/123/2026", out var number, out _) ? number : default;
 
     [Fact]
     public void Register_EmptyPolicyId_Throws()
     {
-        Assert.Throws<DomainException>(() => CreateClaim(Guid.Empty));
+        Assert.Throws<DomainException>(() => TheftClaim.Register(
+            Guid.NewGuid(), Guid.Empty, CreateReportNumber(), DateTime.UtcNow));
     }
 
     [Fact]
     public void Register_ValidData_SetsAllProperties()
     {
         var policyId = Guid.NewGuid();
+        var now = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc);
 
-        var claim = CreateClaim(policyId);
+        var claim = TheftClaim.Register(Guid.NewGuid(), policyId, CreateReportNumber(), now);
 
         Assert.Equal(policyId, claim.PolicyId);
-        Assert.Equal(new DateOnly(2026, 1, 1), claim.IncidentDate);
-        Assert.Equal("Skradziono pojazd z parkingu.", claim.Description);
         Assert.Equal("KMP/123/2026", claim.PoliceReportNumber.Value);
-        Assert.Equal(new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc), claim.ReportedAt);
+        Assert.Equal(TheftClaimStatus.Accepted, claim.Status);
+        Assert.Equal(now, claim.CreatedAt);
+        Assert.Equal(now, claim.UpdatedAt);
     }
 }

@@ -25,21 +25,19 @@ public static class DependencyInjection
         {
             services.AddSingleton<IPolicyRepository, InMemoryPolicyRepository>();
             services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
+            services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         }
         else
         {
             services.AddDbContext<PolicyPlatformDbContext>(options => options.UseSqlServer(connectionString));
             services.AddScoped<IPolicyRepository, EfPolicyRepository>();
             services.AddScoped<ICustomerRepository, EfCustomerRepository>();
+            services.AddScoped<IClaimRepository, EfClaimRepository>();
         }
 
         services.AddSingleton<IPolicyNumberGenerator, SequentialPolicyNumberGenerator>();
         services.AddScoped<PolicyService>();
         services.AddScoped<CustomerService>();
-
-        // Claims have no durable store yet (EF Core provider is a separate, unscoped
-        // piece of work) — in-memory keeps the theft-claim validation flow runnable now.
-        services.AddSingleton<IClaimRepository, InMemoryClaimRepository>();
         services.AddScoped<ClaimService>();
         return services;
     }

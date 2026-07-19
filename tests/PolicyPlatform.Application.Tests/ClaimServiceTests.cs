@@ -1,4 +1,5 @@
 using PolicyPlatform.Application.Claims;
+using PolicyPlatform.Domain.Claims;
 using PolicyPlatform.Domain.Common;
 using PolicyPlatform.Domain.Policies;
 using PolicyPlatform.Infrastructure.Persistence;
@@ -31,49 +32,51 @@ public class ClaimServiceTests
     public async Task RegisterTheftClaim_UnknownPolicy_Throws()
     {
         var (claims, _) = CreateServices();
-        var request = new CreateTheftClaimRequest(
-            Guid.NewGuid(), new DateOnly(2026, 1, 1), "Kradziez pojazdu.", "KMP/123/2026");
+        var request = new CreateTheftClaimRequest(Guid.NewGuid(), "KMP/123/2026");
 
         await Assert.ThrowsAsync<DomainException>(() => claims.RegisterTheftClaimAsync(request));
     }
 
     [Fact]
-    public async Task RegisterTheftClaim_MissingPoliceReportNumber_Throws()
+    public async Task RegisterTheftClaim_MissingPoliceReportNumber_ThrowsValidation()
     {
         var (claims, policies) = CreateServices();
         var policyId = await CreateExistingPolicyAsync(policies);
-        var request = new CreateTheftClaimRequest(
-            policyId, new DateOnly(2026, 1, 1), "Kradziez pojazdu.", null);
+        var request = new CreateTheftClaimRequest(policyId, null);
 
-        await Assert.ThrowsAsync<DomainException>(() => claims.RegisterTheftClaimAsync(request));
+        var ex = await Assert.ThrowsAsync<PoliceReportNumberValidationException>(
+            () => claims.RegisterTheftClaimAsync(request));
+        Assert.Equal(PoliceReportNumber.RequiredCode, ex.Code);
     }
 
     [Fact]
-    public async Task RegisterTheftClaim_BlankPoliceReportNumber_Throws()
+    public async Task RegisterTheftClaim_InvalidFormatPoliceReportNumber_ThrowsValidation()
     {
         var (claims, policies) = CreateServices();
         var policyId = await CreateExistingPolicyAsync(policies);
-        var request = new CreateTheftClaimRequest(
-            policyId, new DateOnly(2026, 1, 1), "Kradziez pojazdu.", "   ");
+        var request = new CreateTheftClaimRequest(policyId, "AB");
 
-        await Assert.ThrowsAsync<DomainException>(() => claims.RegisterTheftClaimAsync(request));
+        var ex = await Assert.ThrowsAsync<PoliceReportNumberValidationException>(
+            () => claims.RegisterTheftClaimAsync(request));
+        Assert.Equal(PoliceReportNumber.InvalidFormatCode, ex.Code);
     }
 
     [Fact]
-    public async Task RegisterTheftClaim_ValidRequest_ReturnsPersistedClaim()
+    public async Task RegisterTheftClaim_ValidRequest_ReturnsPersistedClaimNormalizedToUpperCase()
     {
         var (claims, policies) = CreateServices();
         var policyId = await CreateExistingPolicyAsync(policies);
-        var request = new CreateTheftClaimRequest(
-            policyId, new DateOnly(2026, 1, 1), "Kradziez pojazdu.", "KMP/123/2026");
+        var request = new CreateTheftClaimRequest(policyId, "kmp/123/2026");
 
         var claim = await claims.RegisterTheftClaimAsync(request);
-        var fetched = await claims.GetTheftClaimAsync(claim.Id);
+        var fetched = await claims.GetTheftClaimAsync(claim.ClaimId);
 
         Assert.Equal(policyId, claim.PolicyId);
         Assert.Equal("KMP/123/2026", claim.PoliceReportNumber);
+        Assert.Equal("ACCEPTED", claim.Status);
+        Assert.True(claim.NextStepAllowed);
         Assert.NotNull(fetched);
-        Assert.Equal(claim.Id, fetched!.Id);
+        Assert.Equal(claim.ClaimId, fetched!.Id);
     }
 
     [Fact]

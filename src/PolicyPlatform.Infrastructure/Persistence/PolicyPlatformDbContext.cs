@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PolicyPlatform.Domain.Auth;
 using PolicyPlatform.Domain.Customers;
 using PolicyPlatform.Domain.Policies;
 
@@ -12,6 +13,7 @@ public sealed class PolicyPlatformDbContext : DbContext
 
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<LoginHistoryEntry> LoginHistoryEntries => Set<LoginHistoryEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

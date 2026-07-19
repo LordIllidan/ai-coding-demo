@@ -26,8 +26,12 @@ if (-not (Get-Item "env:CONTRACT_TEXT" -ErrorAction SilentlyContinue)) {
 $Contract = $env:CONTRACT_TEXT
 
 foreach ($name in "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN") {
-    if (-not (Get-Item "env:$name" -ErrorAction SilentlyContinue)) {
-        throw "Missing required secret/env: $name"
+    # GitHub Actions still SETS an env var for an unconfigured secret, just as an empty
+    # string -- Get-Item alone doesn't catch that (item exists, value is just ""), which
+    # produced a confusing downstream "Invalid URI: hostname could not be parsed" instead
+    # of a clear error. Check for actual content, not just presence.
+    if ([string]::IsNullOrWhiteSpace((Get-Item "env:$name" -ErrorAction SilentlyContinue).Value)) {
+        throw "Missing required secret/env: $name (repo secret not configured)"
     }
 }
 

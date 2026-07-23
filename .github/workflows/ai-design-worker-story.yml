@@ -6,7 +6,7 @@ on:
       - ai_design_review_task
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ai-design-worker-story-${{ github.event.client_payload.story_key }}
@@ -24,15 +24,20 @@ jobs:
     steps:
       - name: Checkout default branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify local tools
         shell: pwsh
         run: |
+          git --version
           claude --version
 
       - name: Run local Claude Code design/UX contract review
         shell: pwsh
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}

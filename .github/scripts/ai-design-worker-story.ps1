@@ -103,6 +103,68 @@ else {
     $result.Text
 }
 
+$mockupLink = ""
+# Kontrakt ma realna sekcje UI (nie "nie dotyczy") -> wygeneruj faktyczny wireframe HTML
+# uzywajac DOKLADNIE nazw kontrolek z kontraktu (testID/id), zeby ten sam artefakt byl
+# punktem odniesienia dla czlowieka (podglad w przegladarce) i dla E2ETestAgent (te same
+# selektory). To odpowiedz na "brakuje nam agenta ktory faktycznie PROJEKTUJE, nie tylko
+# recenzuje ksztalt API" -- osobny krok, osobny budzet, zeby review-only stories go nie placily.
+if ($Contract -match '(?ms)^##\s*Nazewnictwo UI\s*$(.+?)(?=^##|\z)') {
+    $uiSection = $Matches[1].Trim()
+    if ($uiSection -and $uiSection -notmatch 'nie dotyczy') {
+        $mockupPrompt = @"
+You are the UI DESIGN MOCKUP generator — same pipeline as the review above, but this step
+PRODUCES an artifact instead of reviewing one. The Tech Lead's contract below has a UI
+naming section with exact control identifiers. Build a single self-contained HTML file
+(inline CSS, no external assets/fonts/JS frameworks) that visually mockups the screen(s)
+described, using those EXACT identifiers as both the visible element and its id/data-testid
+attribute — this file becomes the shared reference: a human opens it in a browser to sign
+off on layout, and E2ETestAgent's Playwright locators must match these same ids.
+
+Story: $StoryKey
+UI naming section from contract:
+~~~text
+$uiSection
+~~~
+
+Full contract for context (field names, states to represent — empty/error/loading if the
+contract describes them):
+~~~text
+$Contract
+~~~
+
+Rules:
+1. Write the mockup to EXACTLY this path: design-mockups/$StoryKey.html
+2. Plain HTML+CSS wireframe (boxes/labels/placeholder text) — not production styling, this
+   is a layout/naming reference, not a pixel-perfect design.
+3. Use semantic HTML and put the contract's exact identifier on each control as
+   id="<identifier>" and data-testid="<identifier>".
+4. If the contract describes empty/error states, include them as separate labeled sections
+   in the same file (not separate files) so all states are visible at once.
+5. Do not touch any other file. Do not run git commands.
+
+Output: one short sentence confirming what you wrote.
+"@
+        $branchName = "design/$($StoryKey.ToLowerInvariant())-mockup"
+        Initialize-FreshBranch -BranchName $branchName -BaseBranch "main"
+        $mockupResult = Invoke-ClaudeCode -Prompt $mockupPrompt -Model $model -Budget $budget -AllowedTools "Write"
+        if ($mockupResult.ExitCode -eq 0 -and (Test-Path "design-mockups/$StoryKey.html")) {
+            $pushed = Push-WorkerChanges -CommitMessage "AI(design): wireframe mockup for $StoryKey" -BranchName $branchName -SetUpstream
+            if ($pushed) {
+                $mockupLink = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/blob/$branchName/design-mockups/$StoryKey.html"
+                Write-Output "Mockup pushed: $mockupLink"
+            }
+        }
+        else {
+            Write-Output "Mockup generation failed or produced no file (exit $($mockupResult.ExitCode)) -- continuing without it, review comment still posts."
+        }
+    }
+}
+
+if ($mockupLink) {
+    $reviewText = "$reviewText`n`nWireframe mockup (branch, not merged): $mockupLink"
+}
+
 $commentBody = "DESIGN REVIEW (UIDesignAgent):`n$reviewText"
 $commentPayload = @{ body = @{ type = "doc"; version = 1; content = @(@{ type = "paragraph"; content = @(@{ type = "text"; text = $commentBody }) }) } } | ConvertTo-Json -Depth 10
 Invoke-RestMethod -Uri "$jiraBase/rest/api/3/issue/$StoryKey/comment" -Method Post -Headers $jiraAuthHeader -Body $commentPayload | Out-Null
